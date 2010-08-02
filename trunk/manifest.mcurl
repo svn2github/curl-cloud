@@ -1,0 +1,11 @@
+{curl 7.0 manifest}
+{curl-file-attributes character-encoding = "shift-jis"}
+{manifest COM.CURLAP.CLOUD}
+
+{component package COM.CURLAP.CLOUD.AWS.S3,
+    location = "AWS/S3/load.scurl"
+}
+
+{component file start.curl,
+    location = "start.curl"
+}
