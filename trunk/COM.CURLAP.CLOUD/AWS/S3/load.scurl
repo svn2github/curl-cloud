@@ -4,4 +4,9 @@
     {compiler-directives careful? = true}
 }
 
-
+{include "gmt-date.scurl"}
+{include "mysax.scurl"}
+{include "open-url.scurl"}
+{include "s3-request.scurl"}
+{include "s3.scurl"}
+{include "saxparse.scurl"}
