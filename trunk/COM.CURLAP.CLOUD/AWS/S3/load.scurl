@@ -1,12 +1,12 @@
 {curl 7.0 package}
 {curl-file-attributes character-encoding = "shift-jis"}
-{package COM.CURLAP.CLOUD.AWS.S3,
+{package S3,
     {compiler-directives careful? = true}
 }
-
-{include "gmt-date.scurl"}
+{include "convert-date.scurl"}
 {include "mysax.scurl"}
-{include "open-url.scurl"}
+{include "open-file.scurl"}
 {include "s3-request.scurl"}
-{include "s3.scurl"}
 {include "saxparse.scurl"}
+
+

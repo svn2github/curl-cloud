@@ -1,0 +1,64 @@
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+{define-proc public {convert-date date-time:DateTime = {DateTime zone = DateTimeZone.utc}}:String
+    def time = date-time.info.iso-time || Time
+    def day = date-time.info.day || Day
+    def month = date-time.info.month || Month
+    def year = date-time.info.year || Year
+    let weekday:String = date-time.info.locale-weekday ||Weekday
+    
+    || transfer weekday
+    {switch weekday
+     case "Œ—j“ú" do
+        {set weekday = "Mon"}
+     case "‰Î—j“ú" do
+        {set weekday = "Tue"}
+     case "…—j“ú" do
+        {set weekday = "Wed"}
+     case "–Ø—j“ú" do
+        {set weekday = "Thu"}
+     case "‹à—j“ú" do
+        {set weekday = "Fri"}
+     case "“y—j“ú" do
+        {set weekday = "Sat"}
+     case "“ú—j“ú" do
+        {set weekday = "Sun"}
+    }
+    
+    || transfer month
+    let month-en:#String =
+    {switch month
+     case 1 do
+        "Jan"
+     case 2 do
+        "Fed"
+     case 3 do
+        "Mar"
+     case 4 do
+        "Apr"
+     case 5 do
+        "May"
+     case 6 do
+        "Jun"
+     case 7 do
+        "Jul"
+     case 8 do
+        "Aug"
+     case 9 do
+        "Sep"
+     case 10 do
+        "Oct"
+     case 11 do
+        "Nov"
+     case 12 do
+        "Dec"
+     else
+        null
+    }
+    
+    let gmt-time:String =
+        weekday & ", " & day & " " & month-en & " " & year & " " & time & " GMT"
+    
+    {return gmt-time}
+}

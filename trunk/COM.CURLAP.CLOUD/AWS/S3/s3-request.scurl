@@ -1,0 +1,334 @@
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+{import * from COM.CURLAP.LIB.CODEC}
+{import * from COM.CURLAP.LIB.CRYPTO}
+{import * from CURL.UTIL.BASE64}
+
+{define-class public S3Request
+  
+  || HTTPリクエストヘッダーに用いるハッシュテーブル
+  field private headers:HttpRequestHeaders =
+      {HttpRequestHeaders.default 
+        "Host", "",
+        "Date", "",
+        "Content-MD5", "",
+        "Content-Type", ""
+      }
+  || x-amz headers
+  field private amz-headers:{HashTable-of String, String} =
+      {new {HashTable-of String, String}}
+  
+  field private default-host:String || ホスト初期値
+  field private access-key-id:String
+  field private secret-key-id:String
+        
+  || --------------------------------------------
+  || コンストラクタ
+  {constructor public {default access-key-id:String, secret-key-id:String, default-host:String}
+    set self.access-key-id = access-key-id
+    set self.secret-key-id = secret-key-id
+    set self.default-host = default-host
+  }
+  
+  || --------------------------------------------
+  || get-bucket-list
+  {method public {get-bucket-list}:#HttpTextInputStream
+    
+    def verb = "GET"
+    def bucket = ""
+    def key = "/"
+    def resource = key
+    
+    {self.headers.set "Host", self.default-host}
+    {self.headers.set "Date", {convert-date}}
+    
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    resource
+    
+    def signature = {base64-encode {{Array-of byte}.from-FastArray {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}}}
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    {return {open-http-file url, self.headers, verb}}
+  }
+  
+  || --------------------------------------------
+  || get-bucket
+  {method public {get-bucket
+                     bucket:#String,
+                     key:String
+                 }:#HttpTextInputStream
+    
+    def verb = "GET"
+    def resource =
+        {value 
+            {if bucket.empty? then
+                {self.headers.set "Host", self.default-host}
+                key
+             else
+                {self.headers.set "Host", bucket & "." & self.default-host}
+                "/" & bucket & key 
+            }
+        }
+
+    {self.headers.set "Date", {convert-date}}
+
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    resource
+
+    def signature = {base64-encode {{Array-of byte}.from-FastArray {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}}}
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    {return {open-http-file url, self.headers, verb}}
+  }
+  
+  || --------------------------------------------
+  || get-object
+  {method public {get-object
+                     bucket:String,
+                     key:String
+                 }:#HttpTextInputStream
+    
+    def verb = "GET"
+    def resource = "/" & bucket & key 
+    
+    {self.headers.set "Host", bucket & "." & self.default-host}
+    {self.headers.set "Date", {convert-date}}
+    
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    resource
+    
+    def signature = {base64-encode {{Array-of byte}.from-FastArray {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}}}
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    {return {open-http-file url, self.headers, verb}}
+  }
+ 
+  || --------------------------------------------
+  || put-bucket
+  {method public {put-bucket
+                     bucket:String,
+                     acl:#String = null
+                 }:#HttpTextInputStream
+    
+    def verb = "PUT"
+    let key:String = "/"
+    def resource = "/" & bucket & key
+    {self.headers.set "Host", bucket & "." & self.default-host}
+    {self.headers.set "Date", {convert-date}}
+    {if-non-null acl then
+        {self.set-amz-headers "x-amz-acl", acl}
+        set key = key & "?acl"
+    }
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    {self.get-all-amz-headers} &
+    resource
+    
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}
+                        }
+                    }
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    || HTTP接続
+    {return {open-http-file url, self.headers, verb}} 
+  }
+  
+  || --------------------------------------------
+  || put-object
+  {method public {put-object
+                     bucket:#String,
+                     key:String,
+                     object:HttpFormData,
+                     content-type:String
+                 }:#HttpTextInputStream
+    
+    def verb = "PUT"       
+    def resource =
+        {value 
+            {if bucket.empty? then
+                {self.headers.set "Host", self.default-host}
+                key
+             else
+                {self.headers.set "Host", bucket & "." & self.default-host}
+                "/" & bucket & key
+            }
+        }
+    {self.headers.set "Content-Type", content-type}
+    {self.headers.set "Date", {convert-date}}
+    {self.set-amz-headers "x-amz-acl", "public-read"}
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    {self.get-all-amz-headers} &
+    resource
+    
+    
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}
+                        }
+                    }
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    || HTTP接続
+    {return {open-http-file url, self.headers, verb, data = object}} 
+  }
+  
+  || --------------------------------------------
+  || delete-bucket
+  {method public {delete-bucket
+                     bucket:String
+                 }:#HttpTextInputStream
+    
+    def verb = "DELETE"
+    def key = "/"
+    def resource = "/" & bucket & key
+    
+    {self.headers.set "Host", bucket & "." & self.default-host}    
+    {self.headers.set "Date", {convert-date}}
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    {self.get-all-amz-headers} &
+    resource
+    
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}
+                        }
+                    }
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    || HTTP接続
+    {return {open-http-file url, self.headers, verb}} 
+  }
+  
+  || --------------------------------------------
+  || delete-object
+  {method public {delete-object
+                     bucket:#String,
+                     key:String
+                 }:#HttpTextInputStream
+    
+    def verb = "DELETE"       
+    def resource =
+        {value 
+            {if bucket.empty? then
+                {self.headers.set "Host", self.default-host}
+                key
+             else
+                {self.headers.set "Host", bucket & "." & self.default-host}
+                "/" & bucket & key
+            }
+        }
+    
+    {self.headers.set "Date", {convert-date}}
+    let string-to-sign:String = 
+        verb & "\n" & 
+    {self.headers.get "Content-MD5"} & "\n" &
+    {self.headers.get "Content-Type"} & "\n" &
+    {self.headers.get "Date"} & "\n" &
+    {self.get-all-amz-headers} &
+    resource
+    
+    
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode {hmac-sha-1 self.secret-key-id, string-to-sign}}
+                        }
+                    }
+    {self.headers.set "Authorization", "AWS " & self.access-key-id & ":" & signature}
+    
+    def url = {abs-url "http://" & {self.headers.get "Host"} & key}
+    
+    || HTTP接続
+    {return {open-http-file url, self.headers, verb}} 
+  }
+  
+  ||---------------------------------------------
+  || amz-headersに値を格納する
+  || HttpRequestHeadersにも同様に格納する
+  || 既にKeyが存在する場合、以前の値の末尾にコンマで繋げる
+  {method public {set-amz-headers key:String, value:String}:void
+    {self.headers.append key, value}
+    
+    set key = {key.to-lower-clone}
+    {if {self.amz-headers.key-exists? key} then
+        set value = {self.amz-headers.get key} & "," & value
+    }
+    {self.amz-headers.set key, {key.to-lower-clone} & ":" & value}
+  }
+  
+  || amz-headersに存在するデータを取り出す
+  {method private {get-all-amz-headers}:String
+    let ret:String = ""
+    {for element:String in self.amz-headers do
+        set ret = element & "\n" & ret
+    }
+    {return ret}
+  }
+  
+  || amz-headersをリセットする
+  {method public {reset-amz-headers}:void
+    {self.amz-headers.clear}
+  }
+  
+}
+
+
+|| レスポンスヘッダ取得用
+||++{try
+||++    let web-stream:HttpTextInputStream =
+||++        {http-file.http-read-open
+||++        }
+||++    {for value:String key name:String in
+||++                  web-stream.response-headers do
+||++        {web-buffer.add {br}}
+||++        {web-buffer.add name &
+||++                      {if value == "" then
+||++                          ""
+||++                       else
+||++                          ": " & value}
+||++                  
+||++        }
+||++    }
+||++    {web-stream.close}
+||++    web-buffer
+||++ catch
+||++    err:HttpPermissionDeniedFileException do
+||++    {text error: HttpPermissionDeniedFileException}
+||++}
