@@ -1,0 +1,7 @@
+{curl 7.0 package}
+{curl-file-attributes character-encoding = "shift-jis"}
+{package S3.UTIL}
+
+{include "hex.scurl"}
+{include "hmac.scurl"}
+{include "message-digest.scurl"}

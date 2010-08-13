@@ -2,13 +2,17 @@
 
 {import * from CURL.XML.SAX.PARSER}
 {import * from CURL.GUI.STANDARD}
-{define-class public MySAXApp {inherits DefaultHandler}
+{define-class public SAX {inherits DefaultHandler}
   
   field private output:VBox
   field private nesting-depth:int
+  field private flag:String = ""
+  field private buckets:{Array-of Bucket}
+  field private bucket:Bucket = {Bucket.default "", ""}
   
-  {constructor public {default parse-output:VBox}
+  {constructor public {default parse-output:VBox, buckets:{Array-of Bucket}}
     set self.output = parse-output
+    set self.buckets = buckets
     {construct-super}
   }
   
@@ -40,6 +44,11 @@
             {text color="navy", >}
         }
     }
+    
+    {if name == "Bucket" then
+        set self.flag = "bucket"
+        
+    }
   }
   
   {method public {end-element
@@ -56,6 +65,7 @@
         }
     }
     set self.nesting-depth = self.nesting-depth - 1
+    set self.flag = ""
   }
   
   {method public {characters
@@ -69,6 +79,11 @@
             {text {ch.substr start, length}}
         }
     }
+    
+    {if self.flag == "name" then
+        {self.buckets.append {Bucket.default {ch.substr start, length}, "date"}}
+    }
+    
   }
   
   {method public {error exception:SAXParseException}:void

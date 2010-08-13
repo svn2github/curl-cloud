@@ -3,53 +3,27 @@
 
 {let public web-buffer:VBox = {VBox}}
 
-{define-proc public {open-web-file web-url:Url}:void
-    let http-file:HttpFile =
-        {web-url.instantiate-File} asa HttpFile
-    let reply:#TextInputStream
-    {try
-        set reply = {read-open web-url}
-        {parse-and-display reply}
-     catch http-ex:HttpException do
-        
-     finally {if-non-null reply then {reply.close}}
-    }
-}
-
 {define-proc public {open-http-file
                         url:Url,
                         header:HttpRequestHeaders,
-                        verb:String,
+                        verb:HttpRequestMethod,
                         data:#HttpRequestData = null
-                    }:#HttpTextInputStream
+                    }:#HttpByteInputStream
     
     let http-file:HttpFile =
-        {url.instantiate-File} asa HttpFile
-    
-    let reply:#HttpTextInputStream
-    
-    let request-method:HttpRequestMethod =
-        {switch verb
-         case "GET" do
-            {value HttpRequestMethod.get}
-         case "PUT" do
-            {value HttpRequestMethod.put}
-         case "DELETE" do
-            {value HttpRequestMethod.delete}
-         else
-            {value HttpRequestMethod.get}
-        }
+        {url.instantiate-File} asa HttpFile    
+    let reply:#HttpByteInputStream
 
     {try
         set reply =
-            {http-file.http-read-open
+            {http-file.http-read-open-byte
                 request-headers = header,
                 request-data = data,
-                request-method = request-method,
+                request-method = verb,
                 always-return-response-headers? = true
             }
         {return reply}
-     catch http-ex:HttpException do
+     catch ex:HttpException do
         {web-buffer.add
             {text error httpException {value reply.response-headers.status}}
         }
@@ -57,22 +31,14 @@
     {return null}
 }
 
-{define-proc public {open-byte-file url:Url, header:HttpRequestHeaders}:#HttpByteInputStream
-    let http-file:HttpFile =
-        {url.instantiate-File} asa HttpFile
-    
-    let reply:#HttpByteInputStream
+{define-proc public {open-byte-file file-url:Url}:#ByteArray
     
     {try
-        set reply = {http-file.http-read-open-byte
-                        request-headers = header,
-                        always-return-response-headers? = true
-                         }
-        {return reply}
-     catch http-ex:HttpException do
-        {web-buffer.add
-            {text error httpException {value reply.response-headers.status}}
-        }
+        let file-data:#ByteArray = {read-bytes-from file-url}
+        {return file-data}
+     catch ex:MissingFileException do
+        {web-buffer.add {text MissingFileException}}
     }
+    
     {return null}
 }

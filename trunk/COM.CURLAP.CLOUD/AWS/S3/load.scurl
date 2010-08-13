@@ -3,10 +3,12 @@
 {package S3,
     {compiler-directives careful? = true}
 }
+{import * from CURL.GUI.BASE}
+{include "bucket.scurl"}
 {include "convert-date.scurl"}
-{include "mysax.scurl"}
+{include "http-request-form.scurl"}
 {include "open-file.scurl"}
 {include "s3-request.scurl"}
-{include "saxparse.scurl"}
+{include "saxparser.scurl"}
 
 
