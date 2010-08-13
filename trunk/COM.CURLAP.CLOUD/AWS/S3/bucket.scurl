@@ -1,0 +1,20 @@
+{curl-file-attributes character-encoding = "shift-jis"}
+|| ----------------------------------------------
+|| バケット情報クラス
+{define-class public Bucket
+  field private _bucket-name:String
+  field private _creation-date:String
+  
+  {constructor public {default bucket-name:String, creation-date:String}
+    set self._bucket-name = bucket-name
+    set self._creation-date = creation-date
+  }
+  
+  {getter public {name}:String
+    {return self._bucket-name}
+  }
+  
+  {setter public {name s:String}:void
+    set self._bucket-name = s
+  }
+}
