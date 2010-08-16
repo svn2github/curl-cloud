@@ -1,69 +1,53 @@
 {curl-file-attributes character-encoding = "shift-jis"}
 
+{import * from CURL.XML.SAX.BASE}
 {import * from CURL.XML.SAX.PARSER}
 
 {let package xr:XMLReader = {SAXParser}}
-{let public parse-output:VBox = {VBox}}
-{let public buckets:{Array-of Bucket} = {new {Array-of Bucket}}}
 
-{define-proc public {parse-xml
-                        input-stream:#ByteInputStream
-                    }:void
+{define-proc public {parse-xml bis:#ByteInputStream}:void
     || clear the parse output of any previous xml file
-    {parse-output.clear}
     
-    {let handler:SAX = {SAX.default parse-output, buckets}}
+    {let handler:SAX = {SAX}}
     {xr.set-content-handler handler}
     {xr.set-error-handler handler}
     
     {try
         || Parse from what is found by opening input-name
-        {xr.parse {InputSource byte-stream = input-stream}}
+        {xr.parse {InputSource byte-stream = bis}}
         
-     catch file-exception:IOException do
+     catch ex:IOException do
         || Handle any exception thrown due to the file read
-        {parse-output.add
-            {text color="red",
-                A problem occurred while reading the file:
-                {value file-exception}
-            }
-        }
-     catch parse-exception:SAXParseException do
+        {throw ex}
+     catch ex:SAXParseException do
         || Handle any exception thrown while parsing the XML
-        {parse-output.add
-            {text color="red",
-                A problem occurred parsing the XML file:
-                {error-message parse-exception}
-            }
-        }
+        {throw ex}
     }
 }
 
 {define-class public SAX {inherits DefaultHandler}
+
+||  field public list-buckets:ListBucketInfo
+  field public list-objects:{Array-of ObjectInfo}
+  field private args-stack:{Array-of Arguments}
+  field private sbuf:StringBuf
   
-  field private output:VBox
-  field private nesting-depth:int
-  field private flag:String = ""
-  field private buckets:{Array-of Bucket}
-  field private bucket:Bucket = {Bucket.default "", ""}
-  
-  {constructor public {default parse-output:VBox, buckets:{Array-of Bucket}}
-    set self.output = parse-output
-    set self.buckets = buckets
+  {constructor public {default}
     {construct-super}
+    set self.list-objects = {new {Array-of ObjectInfo}}
+    set self.args-stack = {new {Array-of Arguments}, {Arguments}}
+    set self.sbuf = {StringBuf}
+  }
+  
+  {getter public {current-stack}:Arguments
+    {return self.args-stack[self.args-stack.size - 1]}
   }
   
   {method public {start-document}:void
-    set self.nesting-depth = 0
-    {self.output.add
-        {text color="purple", Start document}
-    }
+    
   }
   
   {method public {end-document}:void
-    {self.output.add
-        {text color="purple", End document}
-    }
   }
   
   {method public {start-element
@@ -72,19 +56,12 @@
                      qname:String,
                      atts:Attributes
                  }:void
-    set self.nesting-depth = self.nesting-depth + 1
-    {self.output.add
-        {HBox
-            {Fill width = self.nesting-depth * 0.2in},
-            {text color="navy", < },
-            {text color="fuchsia", {value name}},
-            {text color="navy", >}
-        }
+
+    {if name == "Error" then
+        {self.s3-error {S3Exception "Error"}}
     }
     
-    {if name == "Bucket" then
-        set self.flag = "bucket"
-    }
+    
   }
   
   {method public {end-element
@@ -92,16 +69,6 @@
                      name:String,
                      qname:String
                  }:void
-    {self.output.add
-        {HBox
-            {Fill width = self.nesting-depth * 0.2in},
-            {text color="navy", </ },
-            {text color="fuchsia", {value name}},
-            {text color="navy", > }
-        }
-    }
-    set self.nesting-depth = self.nesting-depth - 1
-    set self.flag = ""
   }
   
   {method public {characters
@@ -109,17 +76,8 @@
                      start:int,
                      length:int
                  }:void
-    {self.output.add
-        {HBox
-            {Fill width = self.nesting-depth * 0.3in},
-            {text {ch.substr start, length}}
-        }
-    }
     
-    {if self.flag == "name" then
-        {self.buckets.append {Bucket.default {ch.substr start, length}, "date"}}
-    }
-    
+
   }
   
   {method public {error exception:SAXParseException}:void
@@ -133,7 +91,19 @@
   {method public {warning exception:SAXParseException}:void
     {throw exception}
   }
+ 
+  {method public {s3-error exception:S3Exception}:void
+    {throw exception}
+  }
   
+}
+
+{define-class public S3Exception {inherits Exception}
+  field private code:String = ""
+  
+  {constructor public {default message:String}
+    {construct-super message}
+  }
 }
 
 {define-proc {error-message parse-exception:SAXParseException}:String

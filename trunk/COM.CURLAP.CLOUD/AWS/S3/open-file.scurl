@@ -1,44 +1,34 @@
 
 {curl-file-attributes character-encoding = "shift-jis"}
 
-{let public web-buffer:VBox = {VBox}}
-
 {define-proc public {open-http-file
                         url:Url,
                         header:HttpRequestHeaders,
                         verb:HttpRequestMethod,
                         data:#HttpRequestData = null
-                    }:#HttpByteInputStream
+                    }:HttpByteInputStream
     
-    let http-file:HttpFile =
-        {url.instantiate-File} asa HttpFile    
-    let reply:#HttpByteInputStream
-
+    let http-file:HttpFile = {url.instantiate-File} asa HttpFile    
+    
     {try
-        set reply =
+        {return
             {http-file.http-read-open-byte
                 request-headers = header,
                 request-data = data,
                 request-method = verb,
                 always-return-response-headers? = true
             }
-        {return reply}
-     catch ex:HttpException do
-        {web-buffer.add
-            {text error httpException {value reply.response-headers.status}}
         }
+     catch ex:HttpException do
+        {throw ex}
     }
-    {return null}
 }
 
-{define-proc public {open-byte-file file-url:Url}:#ByteArray
+{define-proc public {open-byte-file file-url:Url}:ByteArray
     
     {try
-        let file-data:#ByteArray = {read-bytes-from file-url}
-        {return file-data}
+        {return {read-bytes-from file-url}}
      catch ex:MissingFileException do
-        {web-buffer.add {text MissingFileException}}
+        {throw ex}
     }
-    
-    {return null}
 }

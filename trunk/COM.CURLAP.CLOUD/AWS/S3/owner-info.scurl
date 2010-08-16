@@ -1,0 +1,18 @@
+{curl-file-attributes character-encoding = "shift-jis"}
+
+{define-class public OwnerInfo
+  field private _id:String
+  field private _display-name:String
+  
+  {getter public {id}:String
+    {return self._id}
+  }
+  {getter public {display-name}:String
+    {return self._display-name}
+  }
+  
+  {constructor public {default id:String, display-name:String}
+    set self._id = id
+    set self._display-name = display-name
+  }
+}

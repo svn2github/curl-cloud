@@ -5,10 +5,13 @@
 }
 {import * from CURL.GUI.BASE}
 {include "bucket.scurl"}
-{include "convert-date.scurl"}
-{include "http-request-form.scurl"}
+||{include "convert-date.scurl"}
+{include "http-request-data.scurl"}
+{include "object-info.scurl"}
 {include "open-file.scurl"}
+{include "owner-info.scurl"}
 {include "s3-request.scurl"}
 {include "saxparser.scurl"}
+{include "write-file.scurl"}
 
 

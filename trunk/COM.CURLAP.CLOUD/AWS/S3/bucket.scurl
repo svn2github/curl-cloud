@@ -1,20 +1,94 @@
 {curl-file-attributes character-encoding = "shift-jis"}
 || ----------------------------------------------
 || バケット情報クラス
-{define-class public Bucket
-  field private _bucket-name:String
+{define-class public BucketInfo
+  field private _name:String
   field private _creation-date:String
   
-  {constructor public {default bucket-name:String, creation-date:String}
-    set self._bucket-name = bucket-name
+  {constructor public {default name:String, creation-date:String}
+    set self._name = name
     set self._creation-date = creation-date
   }
   
   {getter public {name}:String
-    {return self._bucket-name}
+    {return self._name}
+  }
+  
+  {getter public {creation-date}:String
+    {return self._creation-date}
   }
   
   {setter public {name s:String}:void
-    set self._bucket-name = s
+    set self._name = s
   }
+  
+  {setter public {creation-date s:String}:void
+    set self._creation-date = s
+  }
+  
+  || --------------------------------------------
+  || put-object
+  {method public {put-object
+                     key:String,
+                     object:ByteArray,
+                     s3:S3Client,
+                     acl:#String = null
+                 }:void
+    
+    def content-type = {get-extension {url "." & key}}
+    def verb = HttpRequestMethod.put      
+    {if-non-null acl then
+        {s3.set-amz-headers "x-amz-acl", acl}
+    }
+    {s3.set-headers "Content-Type", content-type}
+    let (signature:String, url:Url) = {s3.return-signature-and-url self.name, key, verb}
+    
+    {open-http-file
+        url,
+        {s3.get-headers},
+        verb,
+        data = {ByteArrayHttpRequestData object}
+    }
+  }
+  || --------------------------------------------
+  || delete-bucket
+  {method public {delete-bucket s3:S3Client}:void
+    
+    def verb = HttpRequestMethod.delete
+    def key = "/"
+    let (signature:String, url:Url) = {s3.return-signature-and-url self.name, key, verb}
+    
+    {open-http-file url, {s3.get-headers}, verb}
+  }
+}
+
+|| ----------------------------------------------
+|| バケット一覧情報
+{define-class public ListBucketInfo
+  field private owner:OwnerInfo
+  field private buckets:{Array-of BucketInfo}
+  
+  {constructor public {default owner:OwnerInfo, buckets:{Array-of BucketInfo}}
+    set self.owner = owner
+    set self.buckets = buckets
+  }
+}
+
+{define-proc public {get-extension url:Url}:String
+    let ext:String = ""
+    
+    {switch url.extension
+     case ".jpg" do
+        set ext = "image/jpeg"
+     case ".png" do
+        set ext = "image/png"
+     case ".xml" do
+        set ext = "application/xml"
+     case ".txt" do
+        set ext = "text/plain"
+     case ".gif" do
+        set ext = "image/gif"
+    }
+    
+    {return ext}
 }

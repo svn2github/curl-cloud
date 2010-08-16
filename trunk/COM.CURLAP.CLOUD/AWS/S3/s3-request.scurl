@@ -5,192 +5,179 @@
 {import * from S3.UTIL}
 {import * from CURL.IO.HTTP}
 
-{define-class public S3Request
+|| ----------------------------------------------
+|| S3に対してのリクエストを作成し送信するクラス
+{define-class public S3Client
   
   || HTTPリクエストヘッダーに用いるハッシュテーブル
-  field public headers:HttpRequestHeaders =
+  field private headers:HttpRequestHeaders =
       {HttpRequestHeaders.default 
         "Host", "",
-        "Date", "",
-        "Content-MD5", "",
-        "Content-Type", ""
+        "Date", ""
       }
   || x-amz headers
-  field public amz-headers:{HashTable-of String, String} =
+  field private amz-headers:{HashTable-of String, String} =
       {new {HashTable-of String, String}}
   field private default-host:String || ホスト初期値
   field private access-key-id:String
   field private secret-key-id:String
+  
+  || String-to-Sign debug用
+  field private _sts:String
+  {getter public {sts}:String
+    {return self._sts}
+  }
+  {setter public {sts s:String}:void
+    set self._sts = s
+  }
+  
+  || --------------------------------------------
+  || HTTPのリクエストに必要なHttpRequestHeaders
+  {method package {get-headers}:HttpRequestHeaders
+    {return self.headers}
+  }
+  
+  {method package {set-headers key:String, value:String}:void
+    set self.headers[key] = value
+  }
         
   || --------------------------------------------
   || コンストラクタ
+  || (param)
+  || access-key-id: Amazon S3にアクセスするためのアクセスキー
+  || secret-key-id: Amazon S3の秘密鍵
+  || default-host: 接続先ホストの初期値
   {constructor public {default access-key-id:String, secret-key-id:String, default-host:String}
     set self.access-key-id = access-key-id
     set self.secret-key-id = secret-key-id
     set self.default-host = default-host
     set self.headers["Host"] = self.default-host
+    
+    set self._sts = "string-to-sign"
   }
   
   || --------------------------------------------
   || get-bucket-list
-  {method public {get-bucket-list}:#HttpByteInputStream
-    
+  || バケットの一覧を取得する
+  || (return)
+  || 取得したバケット一覧
+  {method public {get-bucket-list}:void
     def verb = HttpRequestMethod.get
-    def bucket = null
-    def key = "/"
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    def url = {abs-url "http://" & self.headers["Host"] & key}
+    let (signature:String, url:Url) = {self.return-signature-and-url null, "/", verb}
     
-    {return {open-http-file url, self.headers, verb}}
+    {try
+        {parse-xml {open-http-file url, self.headers, verb}}
+     catch ex:S3Exception do
+        {throw ex}
+    }
   }
   
   || --------------------------------------------
   || get-bucket
-  {method public {get-bucket
-                     bucket:#String,
-                     key:String
-                 }:#HttpByteInputStream
-    
+  || バケット内のオブジェクト一覧を取得する
+  || (param)
+  || bucket: 取得先のバケット名
+  || key: 取得する際のオプション　(例：?acl, ?location)
+  {method public {get-bucket bucket:String, key:String = "/" }:void
     def verb = HttpRequestMethod.get
-
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
+    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
     
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    {return {open-http-file url, self.headers, verb}}
+    {try
+        {parse-xml {open-http-file url, self.headers, verb}}
+     catch ex:S3Exception do
+        {throw ex}
+    }
   }
   
   || --------------------------------------------
   || get-object
-  {method public {get-object
-                     bucket:String,
-                     key:String
-                 }:#HttpByteInputStream
+  || オブジェクトを取得する
+  || (param)
+  || bucket: 取得先のバケット名
+  || key: 取得したいオブジェクト名
+  || (return)
+  || 取得したオブジェクト
+  {method public {get-object bucket:String, key:String}:ByteInputStream
     
     def verb = HttpRequestMethod.get
+    let (signature:String, uri:Url) = {self.return-signature-and-url bucket, key, verb}
+    
+    def reply = {open-http-file uri, self.headers, verb}
 
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    {return {open-http-file url, self.headers, verb}}
+    {return reply}
   }
  
   || --------------------------------------------
   || put-bucket
-  {method public {put-bucket
-                     bucket:String,
-                     acl:#String = null
-                 }:#HttpByteInputStream
+  || バケットを新規作成する
+  || (param)
+  || bucket: 作成したいバケット名
+  || acl: バケットのアクセスコントロール
+  {method public {put-bucket bucket:String, acl:#String = null}:void
     
     def verb = HttpRequestMethod.put
-    def key = "/"
+    
     {if-non-null acl then
         {self.set-amz-headers "x-amz-acl", acl}
     }
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
+    let (signature:String, url:Url) = {self.return-signature-and-url bucket, "/", verb}
     
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    || HTTP接続
-    {return {open-http-file url, self.headers, verb}} 
+    {open-http-file url, self.headers, verb}
   }
   
-  || --------------------------------------------
-  || put-object
-  {method public {put-object
-                     bucket:#String,
-                     key:String,
-                     object:ByteArray,
-                     content-type:String,
-                     acl:#String = null
-                 }:#HttpByteInputStream
-    
-    def verb = HttpRequestMethod.put      
-    {if-non-null acl then
-        {self.set-amz-headers "x-amz-acl", acl}
-    }
-    set self.headers["Content-Type"] = content-type
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    || HTTP接続
-    {return {open-http-file url, self.headers, verb, data = {HttpRequestForm.default object, content-type}}}
-  }
-  
-  || --------------------------------------------
-  || delete-bucket
-  {method public {delete-bucket
-                     bucket:String
-                 }:#HttpByteInputStream
-    
-    def verb = HttpRequestMethod.delete
-    def key = "/"
-       
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    || HTTP接続
-    {return {open-http-file url, self.headers, verb}} 
-  }
-  
+  || BucketInfoクラスに移動
+||--  || --------------------------------------------
+||--  || put-object
+||--  {method public {put-object
+||--                     bucket:#String,
+||--                     key:String,
+||--                     object:ByteArray,
+||--                     acl:#String = null
+||--                 }:void
+||--    
+||--    def content-type = {get-extension {url "." & key}}
+||--    def verb = HttpRequestMethod.put      
+||--    {if-non-null acl then
+||--        {self.set-amz-headers "x-amz-acl", acl}
+||--    }
+||--    set self.headers["Content-Type"] = content-type
+||--    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
+||--    
+||--    {open-http-file
+||--        url,
+||--        self.headers,
+||--        verb,
+||--        data = {ByteArrayHttpRequestData object}
+||--    }
+||--  }
+||--  
+||--  || --------------------------------------------
+||--  || delete-bucket
+||--  {method public {delete-bucket bucket:String}:void
+||--    
+||--    def verb = HttpRequestMethod.delete
+||--    def key = "/"
+||--    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
+||--
+||--    {open-http-file url, self.headers, verb}
+||--  }
+
   || --------------------------------------------
   || delete-object
-  {method public {delete-object
-                     bucket:#String,
-                     key:String
-                 }:#HttpByteInputStream
-    
-    def verb = HttpRequestMethod.delete       
-    
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    || HTTP接続
-    {return {open-http-file url, self.headers, verb}} 
+  {method public {delete-object bucket:#String, key:String}:void
+    def verb = HttpRequestMethod.delete
+    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
+
+    {open-http-file url, self.headers, verb}
   }
   
   || --------------------------------------------
   || head-object
-  {method public {head-object
-                     bucket:String,
-                     key:String
-                 }:#HttpByteInputStream
+  {method public {head-object bucket:String, key:String}:#HttpByteInputStream
     
     def verb = HttpRequestMethod.head     
-    
-    set self.headers["Date"] = {convert-date}
-    let string-to-sign:String = {self.return-string-to-sign bucket, key, verb}    
-    def signature = {self.get-signature string-to-sign}
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    || HTTP接続
+    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
+
     {return {open-http-file url, self.headers, verb}} 
   }
   
@@ -198,9 +185,10 @@
   || amz-headersに値を格納する
   || HttpRequestHeadersにも同様に格納する
   || 既にKeyが存在する場合、以前の値の末尾にコンマで繋げる
-  {method public inline {set-amz-headers key:String, value:String}:void
+  {method package inline {set-amz-headers key:String, value:String}:void
     set self.headers[key]= value
     
+    let value-buf:StringBuf = {StringBuf value}
     set key = {key.to-lower-clone}
     {if {self.amz-headers.key-exists? key} then
         set value = {self.amz-headers.get key} & "," & value
@@ -209,27 +197,34 @@
   }
   
   || amz-headersに存在するデータを取り出す
-  {method public {get-all-amz-headers amz-headers:{HashTable-of String, String}}:String
-    let ret:String = ""
+  {method package {get-all-amz-headers amz-headers:{HashTable-of String, String}}:String
+    let ret:StringBuf = {StringBuf}
     {for element:String in amz-headers do
-        set ret = element & "\n" & ret
+        {for c:char in element do
+            {ret.append c}
+        }
+        {ret.append 0x000A} || \n
     }
-    {return ret}
+    {return {ret.to-String}}
   }
   
   || amz-headersをリセットする
-  {method public {reset-amz-headers}:void
+  {method package {reset-amz-headers}:void
     {self.amz-headers.clear}
   }
   
-  {method private inline {return-string-to-sign
-                             bucket:#String,
-                             key:String,
-                             verb:HttpRequestMethod,
-                             headers:HttpRequestHeaders = self.headers,
-                             amz-headers:{HashTable-of String, String} = self.amz-headers
-                         }:String
-    
+  {method package {get-header-value key:String}:#String
+    let value:#String = ""
+    {if {self.headers.key-exists? key} then
+        set value = self.headers[key]
+    }
+    {return value}
+  }
+  
+  || headers に値を格納する
+  || signature と RequestURL を返す
+  {method package {return-signature-and-url bucket:#String, key:String, verb:HttpRequestMethod}:(String, Url)
+    set self.headers["Date"] = {HttpHeaders.date-time-to-http-header-string {DateTime}}
     def resource =
         {value 
             {if-non-null bucket then
@@ -243,54 +238,32 @@
     
     let string-to-sign:String = 
         {verb.name.to-upper-clone} & "\n" & 
-    self.headers["Content-MD5"] & "\n" &
-    self.headers["Content-Type"] & "\n" &
-    self.headers["Date"] & "\n" &
-    {self.get-all-amz-headers amz-headers} &
+    {self.get-header-value "Content-MD5"} & "\n" &
+    {self.get-header-value "Content-Type"} & "\n" &
+    {self.get-header-value "Date"} & "\n" &
+    {self.get-all-amz-headers self.amz-headers} &
     resource
     
-    {return string-to-sign}
-  }
-  
-  {method private {get-signature string-to-sign:String}:String
     let sts:ByteVec = {ByteVec max-size = string-to-sign.size * CharEncoding.utf8.transcode-min-expansion-factor}
     
     {encode-characters string-to-sign, sts, CharEncoding.utf8}
-    
-    {return {base64-encode
-                {{Array-of byte}.from-FastArray
-                    {hex-decode
-                        {hmac-sha-1
-                            self.secret-key-id,
-                            sts
+
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode
+                                {hmac-sha-1
+                                    self.secret-key-id,
+                                    sts
+                                }
+                            }
                         }
                     }
-                }
-            }
-    }
+    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
+    def url = {abs-url "http://" & self.headers["Host"] & key}
+    
+    set self._sts = string-to-sign
+    
+    {return (signature, url)}
   }
+  
 }
-
-
-|| レスポンスヘッダ取得用
-||++{try
-||++    let web-stream:HttpTextInputStream =
-||++        {http-file.http-read-open
-||++        }
-||++    {for value:String key name:String in
-||++                  web-stream.response-headers do
-||++        {web-buffer.add {br}}
-||++        {web-buffer.add name &
-||++                      {if value == "" then
-||++                          ""
-||++                       else
-||++                          ": " & value}
-||++                  
-||++        }
-||++    }
-||++    {web-stream.close}
-||++    web-buffer
-||++ catch
-||++    err:HttpPermissionDeniedFileException do
-||++    {text error: HttpPermissionDeniedFileException}
-||++}

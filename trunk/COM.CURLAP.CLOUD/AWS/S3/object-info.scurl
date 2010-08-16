@@ -1,0 +1,46 @@
+{curl-file-attributes character-encoding = "shift-jis"}
+
+{define-class public ObjectInfo
+  field private key:String
+  field private last-modified:String
+  field private etag:String
+  field private size:int
+  field private storage-class:String
+  field private owner:#OwnerInfo
+  
+  {constructor public {default
+                          key:String,
+                          last-modified:String,
+                          etag:String,
+                          size:int,
+                          storage-class:String,
+                          owner:#OwnerInfo
+                      }
+    set self.key = key
+    set self.last-modified = last-modified
+    set self.etag = etag
+    set self.size = size
+    set self.storage-class = storage-class
+    set self.owner = owner
+  }
+  
+  {factory public {from-xml
+                      key:String = "",
+                      last-modified:String = "",
+                      etag:String = "",
+                      size:int,
+                      storage-class:String = "",
+                      owner:#OwnerInfo = null,
+                      ...
+                  }:ObjectInfo
+    {return {ObjectInfo
+                key,
+                last-modified,
+                etag,
+                size,
+                storage-class,
+                owner
+            }
+    }
+  }
+}

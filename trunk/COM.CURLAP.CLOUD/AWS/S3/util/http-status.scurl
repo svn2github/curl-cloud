@@ -1,0 +1,18 @@
+
+{curl-file-attributes character-encoding = "shift-jis"}
+
+{define-proc public {return-status-message hbis:HttpByteInputStream}:String
+    let message:String = ""
+    def status = hbis.response-headers.status
+    
+    {switch status
+     case 200 do
+        set message = "³í‚Éˆ—‚³‚ê‚Ü‚µ‚½"
+     case 204 do
+        set message = "³í‚Éíœ‚³‚ê‚Ü‚µ‚½"
+     else
+        set message = "Error"
+    }
+    
+    {return message}
+}

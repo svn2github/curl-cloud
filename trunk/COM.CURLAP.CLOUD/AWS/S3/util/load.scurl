@@ -2,6 +2,9 @@
 {curl-file-attributes character-encoding = "shift-jis"}
 {package S3.UTIL}
 
+{import * from CURL.GUI.BASE}
+{import * from CURL.IO.HTTP}
 {include "hex.scurl"}
 {include "hmac.scurl"}
 {include "message-digest.scurl"}
+{include "http-status.scurl"}
