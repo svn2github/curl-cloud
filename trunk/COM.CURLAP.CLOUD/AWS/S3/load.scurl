@@ -1,17 +1,20 @@
 {curl 7.0 package}
 {curl-file-attributes character-encoding = "shift-jis"}
-{package S3,
+{package COM.CURLAP.CLOUD.AWS.S3,
     {compiler-directives careful? = true}
 }
 {import * from CURL.GUI.BASE}
+{import * from CURL.IO.HTTP}
+{import * from CURL.UTIL.BASE64}
+{import * from CURL.UTIL.MIME-ASSOC}
+{import * from CURL.XML.SAX.BASE}
+{import * from CURL.XML.SAX.PARSER}
+{import * from COM.CURLAP.CROUD.AWS.S3.UTIL}
+
 {include "bucket.scurl"}
-||{include "convert-date.scurl"}
 {include "http-request-data.scurl"}
 {include "object-info.scurl"}
 {include "open-file.scurl"}
-{include "owner-info.scurl"}
-{include "s3-request.scurl"}
+{include "s3-client.scurl"}
 {include "saxparser.scurl"}
 {include "write-file.scurl"}
-
-

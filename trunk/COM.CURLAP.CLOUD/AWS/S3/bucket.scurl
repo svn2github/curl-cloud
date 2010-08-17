@@ -1,94 +1,170 @@
 {curl-file-attributes character-encoding = "shift-jis"}
 || ----------------------------------------------
 || バケット情報クラス
-{define-class public BucketInfo
-  field private _name:String
-  field private _creation-date:String
+{define-class public Bucket
+  field public-get private-set name:String
+  field public-get private-set creation-date:DateTime
+  field private s3:S3Client
   
-  {constructor public {default name:String, creation-date:String}
-    set self._name = name
-    set self._creation-date = creation-date
-  }
+  {constructor package {default
+                           name:String,
+                           creation-date:DateTime,
+                           s3:S3Client
+                       }
+    set self.name = name
+    set self.creation-date = creation-date
+    set self.s3 = s3
+  }  
   
-  {getter public {name}:String
-    {return self._name}
-  }
-  
-  {getter public {creation-date}:String
-    {return self._creation-date}
-  }
-  
-  {setter public {name s:String}:void
-    set self._name = s
-  }
-  
-  {setter public {creation-date s:String}:void
-    set self._creation-date = s
+  {factory package {from-xml
+                       name:String = "",
+                       creationdate:String = "",
+                       s3:S3Client = {S3Client "", "", ""},
+                       ...
+                   }:Bucket
+    {return {Bucket name, {DateTime creationdate}, s3}}
   }
   
   || --------------------------------------------
-  || put-object
-  {method public {put-object
+  || get-bucket
+  || バケット内のオブジェクト一覧を取得する
+  || (param)
+  || key: 取得する際のオプション　(例：?acl, ?location)
+  {method public {get-bucket key:String = "/"}:{Array-of ObjectInfo}
+    def verb = HttpRequestMethod.get
+    let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
+    
+    {try
+        {return {self.s3.parse-object-xml {open-http-file url, {self.s3.get-headers}, verb}}.list-objects}
+     catch ex:S3Exception do
+        {throw ex}
+    }
+  }
+  
+  || --------------------------------------------
+  || get-object
+  || オブジェクトを取得する
+  || (param)
+  || key: 取得したいオブジェクト名
+  || (return)
+  || 取得したオブジェクト
+  {method public {get-object key:String}:HttpByteInputStream
+    
+    def verb = HttpRequestMethod.get
+    let (signature:String, uri:Url) = {self.s3.return-signature-and-url self.name, key, verb}
+    
+    def reply = {open-http-file uri, {self.s3.get-headers}, verb}
+    
+    {return reply}
+  }
+  
+  || --------------------------------------------
+  || put-object-by-url
+  || オブジェクトをアップロードする
+  || (param)
+  || key: アップロードするオブジェクト名
+  || uri: アップロードするオブジェクトのローカルアドレス
+  || acl: ACL指定　(例：public-read)
+  {method public {put-object-by-url
                      key:String,
-                     object:ByteArray,
-                     s3:S3Client,
+                     uri:Url,
                      acl:#String = null
                  }:void
     
-    def content-type = {get-extension {url "." & key}}
-    def verb = HttpRequestMethod.put      
+    def content-type = {file-extension-to-mime-type {url "." & key}.extension}
+    def verb = HttpRequestMethod.put
+    
     {if-non-null acl then
-        {s3.set-amz-headers "x-amz-acl", acl}
+        {self.s3.set-amz-headers "x-amz-acl", acl}
     }
-    {s3.set-headers "Content-Type", content-type}
-    let (signature:String, url:Url) = {s3.return-signature-and-url self.name, key, verb}
+    {if-non-null content-type then
+        {self.s3.set-headers "Content-Type", content-type}
+    }
+    
+    let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
     
     {open-http-file
         url,
-        {s3.get-headers},
+        {self.s3.get-headers},
+        verb,
+        data = {ByteArrayHttpRequestData {open-byte-file uri}}
+    }
+  }
+  
+  || --------------------------------------------
+  || put-object-by-bytes
+  || オブジェクトをアップロードする
+  || (param)
+  || key: アップロードするオブジェクト名
+  || object: アップロードするオブジェクト
+  || acl: ACL指定　(例：public-read)
+  {method public {put-object-by-bytes
+                     key:String,
+                     object:ByteArray,
+                     acl:#String = null
+                 }:void
+    
+    def content-type = {file-extension-to-mime-type {url "." & key}.extension}
+    def verb = HttpRequestMethod.put
+    
+    {if-non-null acl then
+        {self.s3.set-amz-headers "x-amz-acl", acl}
+    }
+    {if-non-null content-type then
+        {self.s3.set-headers "Content-Type", content-type}
+    }
+    
+    let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
+    
+    {open-http-file
+        url,
+        {self.s3.get-headers},
         verb,
         data = {ByteArrayHttpRequestData object}
     }
   }
+  
   || --------------------------------------------
   || delete-bucket
-  {method public {delete-bucket s3:S3Client}:void
+  || バケットを削除する
+  {method public {delete-bucket}:void
     
     def verb = HttpRequestMethod.delete
     def key = "/"
-    let (signature:String, url:Url) = {s3.return-signature-and-url self.name, key, verb}
+    let (signature:String, uri:Url) = {self.s3.return-signature-and-url self.name, key, verb}
     
-    {open-http-file url, {s3.get-headers}, verb}
+    {open-http-file uri, {self.s3.get-headers}, verb}
   }
+  
+  || --------------------------------------------
+  || ファイルにオブジェクトを書き込む
+  {method package {write-file hbis:HttpByteInputStream, uri:Url}:void
+    {with-open-streams bos:ByteOutputStream = {write-open-byte uri} do
+        {bos.write {{{ByteInputStream-from {Array-of byte}} {hbis.read}}.read}}
+        {bos.flush}
+    }
+  } 
 }
 
 || ----------------------------------------------
 || バケット一覧情報
-{define-class public ListBucketInfo
-  field private owner:OwnerInfo
-  field private buckets:{Array-of BucketInfo}
+{define-class public Buckets
+  field public-get private-set owner:Owner
+  field public-get private-set buckets:{Array-of Bucket}
   
-  {constructor public {default owner:OwnerInfo, buckets:{Array-of BucketInfo}}
+  {constructor package {default
+                          owner:Owner,
+                          buckets:{Array-of Bucket}
+                      }
     set self.owner = owner
     set self.buckets = buckets
   }
-}
-
-{define-proc public {get-extension url:Url}:String
-    let ext:String = ""
-    
-    {switch url.extension
-     case ".jpg" do
-        set ext = "image/jpeg"
-     case ".png" do
-        set ext = "image/png"
-     case ".xml" do
-        set ext = "application/xml"
-     case ".txt" do
-        set ext = "text/plain"
-     case ".gif" do
-        set ext = "image/gif"
-    }
-    
-    {return ext}
+  
+  {factory package {from-xml
+                       owner:Owner = {Owner "id", "name"},
+                       buckets:{Array-of Bucket} = {new {Array-of Bucket}},
+                       ...
+                   }:Buckets
+    {return {Buckets owner, buckets}}
+  }
 }

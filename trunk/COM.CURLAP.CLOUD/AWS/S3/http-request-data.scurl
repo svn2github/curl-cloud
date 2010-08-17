@@ -1,4 +1,3 @@
-
 {curl-file-attributes character-encoding = "shift-jis"}
 
 {define-class package ByteArrayHttpRequestData {inherits HttpRequestData}

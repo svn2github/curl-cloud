@@ -1,20 +1,20 @@
 {curl-file-attributes character-encoding = "shift-jis"}
 
 {define-class public ObjectInfo
-  field private key:String
-  field private last-modified:String
-  field private etag:String
-  field private size:int
-  field private storage-class:String
-  field private owner:#OwnerInfo
+  field public-get private-set key:String
+  field public-get private-set last-modified:DateTime
+  field public-get private-set etag:String
+  field public-get private-set size:int
+  field public-get private-set storage-class:String
+  field public-get private-set owner:#Owner
   
-  {constructor public {default
+  {constructor package {default
                           key:String,
-                          last-modified:String,
+                          last-modified:DateTime,
                           etag:String,
                           size:int,
                           storage-class:String,
-                          owner:#OwnerInfo
+                          owner:#Owner
                       }
     set self.key = key
     set self.last-modified = last-modified
@@ -24,23 +24,41 @@
     set self.owner = owner
   }
   
-  {factory public {from-xml
+  {factory package {from-xml
                       key:String = "",
-                      last-modified:String = "",
+                      lastmodified:String = "",
                       etag:String = "",
-                      size:int,
+                      size:String = "",
                       storage-class:String = "",
-                      owner:#OwnerInfo = null,
+                      owner:#Owner = null,
                       ...
                   }:ObjectInfo
     {return {ObjectInfo
                 key,
-                last-modified,
+                {DateTime lastmodified},
                 etag,
-                size,
+                {size.to-int},
                 storage-class,
                 owner
             }
     }
+  }
+}
+
+{define-class public Owner
+  field public-get private-set id:String
+  field public-get private-set display-name:String
+  
+  {constructor package {default id:String, display-name:String}
+    set self.id = id
+    set self.display-name = display-name
+  }
+  
+  {factory package {from-xml
+                       id:String = "",
+                       displayname:String = "",
+                       ...
+                   }:Owner
+    {return {Owner id, displayname}}
   }
 }

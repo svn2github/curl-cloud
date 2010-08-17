@@ -6,6 +6,10 @@
     location = "AWS/S3/load.scurl"
 }
 
+{component package COM.CURLAP.CLOUD.AWS.S3.UTIL,
+    location = "AWS/S3/util/load.scurl"
+}
+
 {component file start.curl,
     location = "start.curl"
 }

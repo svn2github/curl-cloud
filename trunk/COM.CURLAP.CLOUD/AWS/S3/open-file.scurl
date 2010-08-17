@@ -1,7 +1,6 @@
-
 {curl-file-attributes character-encoding = "shift-jis"}
 
-{define-proc public {open-http-file
+{define-proc package {open-http-file
                         url:Url,
                         header:HttpRequestHeaders,
                         verb:HttpRequestMethod,
@@ -24,7 +23,7 @@
     }
 }
 
-{define-proc public {open-byte-file file-url:Url}:ByteArray
+{define-proc package {open-byte-file file-url:Url}:ByteArray
     
     {try
         {return {read-bytes-from file-url}}
