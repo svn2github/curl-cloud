@@ -7,4 +7,3 @@
 {include "hex.scurl"}
 {include "hmac.scurl"}
 {include "message-digest.scurl"}
-{include "http-status.scurl"}
