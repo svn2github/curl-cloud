@@ -5,16 +5,16 @@
   field private _request-data:ByteArray
   field private char-encoding:CharEncoding
   field private _content-type:#String
-  
-  {getter public {content-type}:#String
-    {return self._content-type}
-  }
-  
+
   {constructor package {default data:ByteArray, char-encoding:CharEncoding = CharEncoding.utf8, content-type:#String = null}
     set self._request-data = data
     set self.char-encoding = char-encoding
     set self._content-type = content-type
   }  
+    
+  {getter public {content-type}:#String
+    {return self._content-type}
+  }
   
   {method public final {request-data}:ByteArray
     {return self._request-data}

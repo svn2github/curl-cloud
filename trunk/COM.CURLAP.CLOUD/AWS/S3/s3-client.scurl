@@ -1,92 +1,130 @@
-{curl-file-attributes character-encoding = "utf8"}
+{curl-file-attributes character-encoding = "shift-jis"}
 
 || ----------------------------------------------
-|| S3に対してのリクエストを作成し送信するクラス
+|| Make�@a request about Amazon S3 and send request
 {define-class public S3Client
-  
-  || HTTPリクエストヘッダーに用いるハッシュテーブル
-  field private headers:HttpRequestHeaders =
-      {HttpRequestHeaders.default 
-        "Host", "",
-        "Date", ""
-      }
-  || x-amz headers
-  field private amz-headers:{HashTable-of String, String} =
-      {new {HashTable-of String, String}}
-  field private default-host:String || ホスト初期値
+  {define-proc package {parse-error-xml bis:#ByteInputStream}:void
+    let xr:XMLReader = {SAXParser}
+    {let handler:ErrorParser = {ErrorParser}}
+    {xr.set-content-handler handler}
+    {xr.set-error-handler handler}
+    
+    {try
+        || Parse from what is found by opening input-name
+        {xr.parse {InputSource byte-stream = bis}}
+     catch ex:IOException do
+        || Handle any exception thrown due to the file read
+        {throw ex}
+     catch ex:SAXParseException do
+        || Handle any exception thrown while parsing the XML
+        {throw ex}
+    }
+  }
   field private access-key-id:String
+  field private amz-headers:{HashTable-of String, String} = {new {HashTable-of String, String}}
+  field private default-host:String
+  field private headers:HttpRequestHeaders = {HttpRequestHeaders.default}
   field private secret-key-id:String
         
   || --------------------------------------------
-  || コンストラクタ
+  || default constructor
   || (param)
-  || access-key-id: Amazon S3にアクセスするためのアクセスキー
-  || secret-key-id: Amazon S3の秘密鍵
-  || default-host: 接続先ホストの初期値
-  {constructor public {default access-key-id:String, secret-key-id:String, default-host:String}
+  || access-key-id: access-key to access Amazon S3
+  || secret-key-id: secret-key
+  || default-host: 
+  {constructor public {default access-key-id:String, secret-key-id:String}
     set self.access-key-id = access-key-id
     set self.secret-key-id = secret-key-id
-    set self.default-host = default-host
-    set self.headers["Host"] = self.default-host
+    set self.default-host = "s3.amazonaws.com"
   }
   
+||--  || --------------------------------------------
+||--  || head-object
+||--  {method public {head-object bucket:String, key:String}:HttpByteInputStream
+||--    
+||--    def verb = HttpRequestMethod.head     
+||--    let url:Url = {self.return-signature-and-url bucket, key, verb}
+||--    {try
+||--        def reply = {open-http-file url, self.headers, verb}
+||--        {self.initialize-headers}
+||--        {return reply}
+||--     catch ex:Exception do
+||--        {throw ex}
+||--    }
+||--  }
+  
   || --------------------------------------------
-  || get-bucket-list
-  || バケットの一覧を取得する
+  || Get bucket list
   || (return)
-  || 取得したバケット一覧
+  || bucket list
   {method public {get-bucket-list}:Buckets
     def verb = HttpRequestMethod.get
-    let (signature:String, url:Url) = {self.return-signature-and-url null, "/", verb}
-    
+    let url:Url = {self.return-signature-and-url null, "", verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+        
     {try
-        {return {self.parse-bucket-xml {open-http-file url, self.headers, verb}}}
-     catch ex:S3Exception do
+        set reply = {open-http-file url, self.headers, verb}
+        {return {self.parse-bucket-xml reply}}
+     catch ex:Exception do
         {throw ex}
+     finally
+        {reply.close}
+        {self.initialize-headers}
     }
   }
   
   || --------------------------------------------
-  || get-bucket
-  || バケット内のオブジェクト一覧を取得する
+  || get object list in bucket
   || (param)
-  || bucket: 取得先のバケット名
-  || key: 取得する際のオプション　(例：?acl, ?location)
-  {method public {get-bucket bucket:String, key:String = "/"}:{Array-of ObjectInfo}
-    def verb = HttpRequestMethod.get
-    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
-    
-    {try
-        {return {self.parse-object-xml {open-http-file url, self.headers, verb}}.list-objects}
-     catch ex:S3Exception do
-        {throw ex}
-    }
-  }
-  
-  || --------------------------------------------
-  || get-object
-  || オブジェクトを取得する
-  || (param)
-  || bucket: 取得先のバケット名
-  || key: 取得したいオブジェクト名
+  || bucket: bucket name
+  || key: option�@(e.g. "?acl", "?location")
   || (return)
-  || 取得したオブジェクト
+  || Object list
+  {method public {get-bucket bucket:String, key:String = ""}:ObjectsInfo
+    def verb = HttpRequestMethod.get
+    let url:Url = {self.return-signature-and-url bucket, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    
+    {try
+        set reply = {open-http-file url, self.headers, verb}
+        {return {self.parse-object-xml reply}}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.initialize-headers}
+    }
+  }
+  
+  || --------------------------------------------
+  || Get object data
+  || (param)
+  || bucket: bucket name
+  || key: object name
+  || (return)
+  || Object data
   {method public {get-object bucket:String, key:String}:HttpByteInputStream
     
     def verb = HttpRequestMethod.get
-    let (signature:String, uri:Url) = {self.return-signature-and-url bucket, key, verb}
+    let uri:Url = {self.return-signature-and-url bucket, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
     
-    def reply = {open-http-file uri, self.headers, verb}
-
-    {return reply}
+    {try
+        set reply = {open-http-file uri, self.headers, verb}
+        {return reply}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.initialize-headers}
+    }
   }
  
   || --------------------------------------------
-  || put-bucket
-  || バケットを新規作成する
+  || Put new bucket
   || (param)
-  || bucket: 作成したいバケット名
-  || acl: バケットのアクセスコントロール
+  || bucket: new bucket name
+  || acl: ACL
   {method public {put-bucket bucket:String, acl:#String = null}:void
     
     def verb = HttpRequestMethod.put
@@ -94,12 +132,20 @@
     {if-non-null acl then
         {self.set-amz-headers "x-amz-acl", acl}
     }
-    let (signature:String, url:Url) = {self.return-signature-and-url bucket, "/", verb}
+    let url:Url = {self.return-signature-and-url bucket, "", verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
     
-    {open-http-file url, self.headers, verb}
+    {try
+        set reply = {open-http-file url, self.headers, verb}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.initialize-headers}
+    }
   }
   
-||--  Bucketクラスに移動
+||--  Moved to bucket.scurl
 ||--  || --------------------------------------------
 ||--  || put-object
 ||--  {method public {put-object
@@ -135,42 +181,8 @@
 ||--
 ||--    {open-http-file url, self.headers, verb}
 ||--  }
-
-  || --------------------------------------------
-  || delete-object
-  {method public {delete-object bucket:String, key:String}:void
-    def verb = HttpRequestMethod.delete
-    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
-
-    {open-http-file url, self.headers, verb}
-  }
   
-  || --------------------------------------------
-  || head-object
-  {method public {head-object bucket:String, key:String}:HttpByteInputStream
-    
-    def verb = HttpRequestMethod.head     
-    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
-
-    {return {open-http-file url, self.headers, verb}} 
-  }
-  
-  ||---------------------------------------------
-  || amz-headersに値を格納する
-  || HttpRequestHeadersにも同様に格納する
-  || 既にKeyが存在する場合、以前の値の末尾にコンマで繋げる
-  {method package inline {set-amz-headers key:String, value:String}:void
-    set self.headers[key]= value
-    
-    let value-buf:StringBuf = {StringBuf value}
-    set key = {key.to-lower-clone}
-    {if {self.amz-headers.key-exists? key} then
-        set value = {self.amz-headers.get key} & "," & value
-    }
-    set self.amz-headers[key] = {key.to-lower-clone} & ":" & value
-  }
-  
-  || amz-headersに存在するデータを取り出す
+  || Get amz-headers
   {method package {get-all-amz-headers amz-headers:{HashTable-of String, String}}:String
     let ret:StringBuf = {StringBuf}
     {for element:String in amz-headers do
@@ -182,6 +194,7 @@
     {return {ret.to-String}}
   }
   
+  || get value of header
   {method package {get-header-value key:String}:#String
     let value:#String = ""
     {if {self.headers.key-exists? key} then
@@ -190,71 +203,70 @@
     {return value}
   }
   
-  || headers に値を格納する
-  || signature と RequestURL を返す
-  {method package {return-signature-and-url bucket:#String, key:String, verb:HttpRequestMethod}:(String, Url)
-    set self.headers["Date"] = {HttpHeaders.date-time-to-http-header-string {DateTime}}
-    def resource =
-        {value 
-            {if-non-null bucket then
-                set self.headers["Host"] = bucket & "." & self.default-host
-                "/" & bucket & key 
-             else
-                set self.headers["Host"] = self.default-host
-                key
-            }
-        }
-    
-    let string-to-sign:String = 
-        {verb.name.to-upper-clone} & "\n" & 
-        {self.get-header-value "Content-MD5"} & "\n" &
-        {self.get-header-value "Content-Type"} & "\n" &
-        {self.get-header-value "Date"} & "\n" &
-        {self.get-all-amz-headers self.amz-headers} &
-        resource
-    
-    let sts:ByteVec = {ByteVec max-size = string-to-sign.size * CharEncoding.utf8.transcode-min-expansion-factor}
-    
-    {encode-characters string-to-sign, sts, CharEncoding.utf8}
-
-    def signature = {base64-encode
-                        {{Array-of byte}.from-FastArray
-                            {hex-decode
-                                {hmac-sha-1
-                                    self.secret-key-id,
-                                    sts
-                                }
-                            }
-                        }
-                    }
-    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
-    def url = {abs-url "http://" & self.headers["Host"] & key}
-    
-    {return (signature, url)}
-  }
   
   || --------------------------------------------
-  || HTTPのリクエストに必要なHttpRequestHeaders
+  || get HttpRequestHeaders
   {method package {get-headers}:HttpRequestHeaders
     {return self.headers}
   }
   
+  || Initialize HttpRequestHeaders and amz-headers
+  {method package {initialize-headers}:void
+    {self.headers.clear}
+    {self.amz-headers.clear}
+  }
+  
+  ||---------------------------------------------
+  || set amz-headers and headers
+  || Combine header fields with the same name into one as "header-name:comma-separated-value-list"
+  {method package {set-amz-headers key:String, value:String}:void
+    set self.headers[key]= value
+    
+    let value-buf:StringBuf = {StringBuf value}
+    set key = {key.to-lower-clone}
+    {if {self.amz-headers.key-exists? key} then
+        set value = {self.amz-headers.get key} & "," & value
+    }
+    set self.amz-headers[key] = {key.to-lower-clone} & ":" & value
+  }
+  
+  || set headers
   {method package {set-headers key:String, value:String}:void
     set self.headers[key] = value
   }
   
   || --------------------------------------------
   || XML parser
-  {method package {parse-bucket-xml bis:#ByteInputStream}:Buckets
-    || clear the parse output of any previous xml file
+ 
+  {method package {parse-object-xml bis:#ByteInputStream}:ObjectsInfo
     let xr:XMLReader = {SAXParser}
-    let handler:ParseBuckets = {ParseBuckets}
+    {let handler:ObjectParser = {ObjectParser}}
     {xr.set-content-handler handler}
     {xr.set-error-handler handler}
     
     {try
         || Parse from what is found by opening input-name
         {xr.parse {InputSource byte-stream = bis}}
+        {return handler.objects} 
+     catch ex:IOException do
+        || Handle any exception thrown due to the file read
+        {throw ex}
+     catch ex:SAXParseException do
+        || Handle any exception thrown while parsing the XML
+        {throw ex}
+    }
+  }
+  
+  {method package {parse-bucket-xml bis:#ByteInputStream}:Buckets
+    let xr:XMLReader = {SAXParser}
+    let handler:BucketParser = {BucketParser}
+    {xr.set-content-handler handler}
+    {xr.set-error-handler handler}
+    
+    {try
+        || Parse from what is found by opening input-name
+        {xr.parse {InputSource byte-stream = bis}}
+        
         let buckets:{Array-of Bucket} = {new {Array-of Bucket}}
         {for args:Arguments in handler.list-bucket do
             {buckets.append {Bucket.from-xml {splice args}, s3 = self}}
@@ -266,30 +278,50 @@
      catch ex:SAXParseException do
         || Handle any exception thrown while parsing the XML
         {throw ex}
-     catch ex:S3Exception do
-        {throw ex}
     }
   }
+
   
-  {method package {parse-object-xml bis:#ByteInputStream}:ParseObjects
-    || clear the parse output of any previous xml file
-    let xr:XMLReader = {SAXParser}
-    {let handler:ParseObjects = {ParseObjects}}
-    {xr.set-content-handler handler}
-    {xr.set-error-handler handler}
+  || Return Signature and RequestURL
+  || (return)
+  || Signature , RequestURL
+  {method package {return-signature-and-url bucket:#String, key:String, verb:HttpRequestMethod}:Url
+    set self.headers["Date"] = {HttpHeaders.date-time-to-http-header-string {DateTime}}
+    def resource = {value 
+                       {if-non-null bucket then
+                           set self.headers["Host"] = bucket & "." & self.default-host
+                           "/" & bucket & "/" & key 
+                        else
+                           set self.headers["Host"] = self.default-host
+                           "/" & key
+                       }
+                   }
     
-    {try
-        || Parse from what is found by opening input-name
-        {xr.parse {InputSource byte-stream = bis}}
-        {return handler} 
-     catch ex:IOException do
-        || Handle any exception thrown due to the file read
-        {throw ex}
-     catch ex:SAXParseException do
-        || Handle any exception thrown while parsing the XML
-        {throw ex}
-     catch ex:S3Exception do
-        {throw ex}
-    }
+    let string-to-sign:String =
+        {verb.name.to-upper-clone} & "\n" & 
+    {self.get-header-value "Content-MD5"} & "\n" &
+    {self.get-header-value "Content-Type"} & "\n" &
+    {self.get-header-value "Date"} & "\n" &
+    {self.get-all-amz-headers self.amz-headers} &
+    resource
+    
+    let sts:ByteVec = {ByteVec max-size = string-to-sign.size * CharEncoding.utf8.transcode-min-expansion-factor}
+    
+    {encode-characters string-to-sign, sts, CharEncoding.utf8}
+    
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode
+                                {hmac-sha-1
+                                    self.secret-key-id,
+                                    sts
+                                }
+                            }
+                        }
+                    }
+    set self.headers["Authorization"] = "AWS " & self.access-key-id & ":" & signature
+    def url = {abs-url "http://" & self.headers["Host"] & "/" & key}
+    
+    {return url}
   }
 }

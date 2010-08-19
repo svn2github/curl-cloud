@@ -2,7 +2,11 @@
 
 {define-proc package {write-file hbis:HttpByteInputStream, url:Url}:void
     {with-open-streams bos:ByteOutputStream = {write-open-byte url} do
-        {bos.write {{{ByteInputStream-from {Array-of byte}} {hbis.read}}.read}}
+        {bos.write
+            {
+                {{ByteInputStream-from {Array-of byte}} {hbis.read}}.read
+            }
+        }
         {bos.flush}
     }
 }

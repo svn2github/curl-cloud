@@ -1,7 +1,96 @@
-{curl-file-attributes character-encoding = "utf8"}
+{curl-file-attributes character-encoding = "shift-jis"}
 
-{define-class package ParseBuckets {inherits DefaultHandler}
+{define-class package ObjectParser {inherits DefaultHandler}
+  
+  field private list-objects:{Array-of ObjectInfo}
+  field package-get private-set objects:ObjectsInfo
+  field package-get private-set args-stack:{Array-of Arguments}
+  field private common-prefixes:{Array-of String} 
+  field private sbuf:StringBuf
+  field private flag:bool = false
+  
+  {constructor package {default}
+    {construct-super}
+    set self.list-objects = {new {Array-of ObjectInfo}}
+    set self.objects = {uninitialized-value-for-type ObjectsInfo}
+    set self.args-stack = {new {Array-of Arguments}, {Arguments}}
+    set self.common-prefixes = {new {Array-of String}}
+    set self.sbuf = {StringBuf}
+  }
+  
+  {getter private {current-stack}:Arguments
+    {return self.args-stack[self.args-stack.size - 1]}
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    
+    {self.sbuf.clear}
+    {switch name
+     case "ListBucketResult" do
+        {self.current-stack.clear}
+     case"Contents" do
+        {self.args-stack.append {Arguments}}
+     case "Owner" do
+        {self.args-stack.append {Arguments}}
+     case "CommonPrefixes" do
+        set self.flag = true
+    }   
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {switch name
+     case "ListBucketResult" do
+        def objects-args = {self.args-stack.pop}
+        set self.objects = {ObjectsInfo.from-xml object-info = self.list-objects, common-prefixes = self.common-prefixes}
+     case"Contents" do
+        def contents-args = {self.args-stack.pop}
+        {self.list-objects.append
+            {ObjectInfo.from-xml {splice contents-args}}
+        }
+     case "Owner" do
+        def owner-args = {self.args-stack.pop}
+        {self.current-stack.append
+            {Owner.from-xml {splice owner-args}},
+            keyword = {name.to-lower-clone}
+        }
+     case "CommonPrefixes" do
+        set self.flag = false
+     case "Prefix" do
+        {if self.flag then
+            {self.common-prefixes.append {self.sbuf.to-String}}
+        }
+        {self.sbuf.clear}        
+     else
+        {self.current-stack.append
+            {self.sbuf.to-String},
+            keyword = {name.to-lower-clone}
+        }
+        {self.sbuf.clear}
+    } 
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.sbuf.concat ch}
+    
+  } 
+}
 
+
+{define-class package BucketParser {inherits DefaultHandler}
+  
   field package-get private-set list-bucket:{Array-of Arguments}
   field package-get private-set owner:Owner
   field private args-stack:{Array-of Arguments}
@@ -33,12 +122,9 @@
      case "Owner" do
         {self.args-stack.append {Arguments}}
      case "Buckets" do
-        {self.args-stack.append {Arguments}}
         {self.list-bucket.clear}
      case "Bucket" do
         {self.args-stack.append {Arguments}}
-     case "Error" do
-        {self.current-stack.clear}
     }   
   }
   
@@ -52,28 +138,11 @@
         {self.current-stack.clear}
      case "Owner" do
         def owner-args = {self.args-stack.pop}
-        |#{self.current-stack.append
-            {Owner.from-xml {splice owner-args}},
-            keyword = {name.to-lower-clone}
-        }#|
         set self.owner = {Owner.from-xml {splice owner-args}}
      case "Buckets" do
-        def buckets-args = {self.args-stack.pop}
-        |#{self.current-stack.append
-            self.list-bucket, keyword = {name.to-lower-clone}
-        }#|
+
      case "Bucket" do
-        |#
-        def bucket-args = {self.args-stack.pop}
-        {self.list-bucket.append
-            {Bucket.from-xml {splice bucket-args}}
-        }#|
         {self.list-bucket.append {self.args-stack.pop}}
-     case "Error" do
-        def ex-args = {self.args-stack.pop}
-        let ex:S3Exception = {S3Exception.from-xml {splice ex-args}}
-        {self.current-stack.clear}
-        {throw ex}
      else
         {self.current-stack.append
             {self.sbuf.to-String},
@@ -90,22 +159,15 @@
                  }:void
     {self.sbuf.concat ch}
   }
-  
-  {method public {s3-error exception:S3Exception}:void
-    {throw exception}
-  }
-  
 }
 
-{define-class package ParseObjects {inherits DefaultHandler}
-  
-  field package-get private-set list-objects:{Array-of ObjectInfo}
-  field package-get private-set args-stack:{Array-of Arguments}
+{define-class package ErrorParser {inherits DefaultHandler}
+
+  field private args-stack:{Array-of Arguments}
   field private sbuf:StringBuf
   
   {constructor package {default}
     {construct-super}
-    set self.list-objects = {new {Array-of ObjectInfo}}
     set self.args-stack = {new {Array-of Arguments}, {Arguments}}
     set self.sbuf = {StringBuf}
   }
@@ -123,12 +185,6 @@
     
     {self.sbuf.clear}
     {switch name
-     case "Owner" do
-        {self.args-stack.append {Arguments}}
-     case "ListBucketResult" do
-        {self.current-stack.clear}
-     case"Contents" do
-        {self.args-stack.append {Arguments}}
      case "Error" do
         {self.current-stack.clear}
     }   
@@ -140,24 +196,10 @@
                      qname:String
                  }:void
     {switch name
-     case "Owner" do
-        def owner-args = {self.args-stack.pop}
-        {self.current-stack.append
-            {Owner.from-xml {splice owner-args}},
-            keyword = {name.to-lower-clone}
-        }
-     case "ListBucketResult" do
-        {self.current-stack.clear}
-     case"Contents" do
-        def contents-args = {self.args-stack.pop}
-        {self.list-objects.append
-            {ObjectInfo.from-xml {splice contents-args}}
-        }
      case "Error" do
         def ex-args = {self.args-stack.pop}
         let ex:S3Exception = {S3Exception.from-xml {splice ex-args}}
-        {self.current-stack.clear}
-        {throw ex}
+        {self.fatal-error ex}
      else
         {self.current-stack.append
             {self.sbuf.to-String},
@@ -173,22 +215,18 @@
                      length:int
                  }:void
     {self.sbuf.concat ch}
-    
   }
-  
-  {method public {s3-error exception:S3Exception}:void
-    {throw exception}
-  }
-  
 }
-{define-class public S3Exception {inherits Exception}
-  field private code:String = ""
+
+{define-class public S3Exception {inherits SAXParseException}
+  field public-get private-set code:String
   
-  {constructor public {default message:String}
-    {construct-super message}
+  {constructor public {default code:String, message:String}
+    {construct-super message = message}
+    set self.code = code
   }
   
-  {factory public {from-xml message:String = "", ...}:S3Exception
-    {return {S3Exception message}}
+  {factory public {from-xml code:String = "", message:String = "", ...}:S3Exception
+    {return {S3Exception code, message}}
   }
 }

@@ -1,5 +1,6 @@
-{curl-file-attributes character-encoding = "utf8"}
-
+{curl-file-attributes character-encoding = "shift-jis"}
+|| ----------------------------------------------
+|| Object info
 {define-class public ObjectInfo
   field public-get private-set key:String
   field public-get private-set last-modified:DateTime
@@ -43,8 +44,33 @@
             }
     }
   }
+  
+  {method public {key-exist? key:String}:bool
+    {if {self.key.find-string key} >= 0 then
+        {return true}
+     else
+        {return false}
+        
+    }
+  }
 }
 
+{define-class public ObjectsInfo
+  field public-get private-set object-info:{Array-of ObjectInfo}
+  field public-get private-set common-prefixes:{Array-of String}
+  
+  {constructor package {default object-info:{Array-of ObjectInfo}, common-prefixes:{Array-of String}}
+    set self.object-info = object-info
+    set self.common-prefixes = common-prefixes
+  }
+  
+  {factory package {from-xml object-info:{Array-of ObjectInfo} = {new {Array-of ObjectInfo}}, common-prefixes:{Array-of String} = {new {Array-of String}}}:ObjectsInfo
+    {return {ObjectsInfo object-info, common-prefixes}}
+  }
+}
+
+|| ----------------------------------------------
+|| Owner
 {define-class public Owner
   field public-get private-set id:String
   field public-get private-set display-name:String

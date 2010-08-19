@@ -1,5 +1,6 @@
 {curl-file-attributes character-encoding = "utf8"}
-
+|| ----------------------------------------------
+|| Open file by http
 {define-proc package {open-http-file
                         url:Url,
                         header:HttpRequestHeaders,
@@ -7,22 +8,28 @@
                         data:#HttpRequestData = null
                     }:HttpByteInputStream
     
-    let http-file:HttpFile = {url.instantiate-File} asa HttpFile    
+    def http-file = {url.instantiate-File} asa HttpFile    
     
     {try
-        {return
-            {http-file.http-read-open-byte
-                request-headers = header,
-                request-data = data,
-                request-method = verb,
-                always-return-response-headers? = true
-            }
+        def reply = {http-file.http-read-open-byte
+                        request-headers = header,
+                        request-data = data,
+                        request-method = verb,
+                        always-return-response-headers? = true
+                    }
+        
+        {switch reply.response-headers.status
+         case 403, 404, 409 do
+            {S3Client.parse-error-xml reply}
         }
+        {return reply}
      catch ex:HttpException do
         {throw ex}
     }
 }
 
+|| ----------------------------------------------
+|| Open file by bytes
 {define-proc package {open-byte-file file-url:Url}:ByteArray
     
     {try

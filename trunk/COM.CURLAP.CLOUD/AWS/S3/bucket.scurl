@@ -1,6 +1,6 @@
-{curl-file-attributes character-encoding = "utf8"}
+{curl-file-attributes character-encoding = "shift-jis"}
 || ----------------------------------------------
-|| バケット情報クラス
+|| Bucket
 {define-class public Bucket
   field public-get private-set name:String
   field public-get private-set creation-date:DateTime
@@ -19,92 +19,154 @@
   {factory package {from-xml
                        name:String = "",
                        creationdate:String = "",
-                       s3:S3Client = {S3Client "", "", ""},
+                       s3:S3Client = {S3Client "", ""},
                        ...
                    }:Bucket
     {return {Bucket name, {DateTime creationdate}, s3}}
   }
   
   || --------------------------------------------
-  || get-bucket
-  || バケット内のオブジェクト一覧を取得する
-  || (param)
-  || key: 取得する際のオプション　(例：?acl, ?location)
-  {method public {get-bucket key:String = "/"}:{Array-of ObjectInfo}
-    def verb = HttpRequestMethod.get
-    let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
+  || Delete bucket
+  {method public {delete-bucket}:void
     
-    {try
-        {return {self.s3.parse-object-xml {open-http-file url, {self.s3.get-headers}, verb}}.list-objects}
-     catch ex:S3Exception do
+    def verb = HttpRequestMethod.delete
+    let uri:Url = {self.s3.return-signature-and-url self.name, "", verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    
+    {try 
+        set reply = {open-http-file uri, {self.s3.get-headers}, verb}
+     catch ex:Exception do
         {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
     }
   }
   
   || --------------------------------------------
-  || get-object
-  || オブジェクトを取得する
-  || (param)
-  || key: 取得したいオブジェクト名
-  || (return)
-  || 取得したオブジェクト
-  {method public {get-object key:String}:HttpByteInputStream
+  || delete-object
+  {method public {delete-object key:String}:void
+    def verb = HttpRequestMethod.delete
+    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
     
-    def verb = HttpRequestMethod.get
-    let (signature:String, uri:Url) = {self.s3.return-signature-and-url self.name, key, verb}
-    
-    def reply = {open-http-file uri, {self.s3.get-headers}, verb}
-    
-    {return reply}
+    {try
+        set reply = {open-http-file url, {self.s3.get-headers}, verb}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
+    }
   }
   
   || --------------------------------------------
-  || put-object-by-url
-  || オブジェクトをアップロードする
+  || Get list object in bucket
   || (param)
-  || key: アップロードするオブジェクト名
-  || uri: アップロードするオブジェクトのローカルアドレス
-  || acl: ACL指定　(例：public-read)
-  {method public {put-object-by-url
+  || option: option (e.g. "?acl", "?location")
+  || (return)
+  || Object list
+  {method public {get-bucket option:String = ""}:ObjectsInfo
+    def verb = HttpRequestMethod.get
+    let url:Url = {self.s3.return-signature-and-url self.name, option, verb}
+    set url = {url.set-query "?prefix=&delimiter=/"}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    
+    {try
+        set reply = {open-http-file url, {self.s3.get-headers}, verb}
+        {return {self.s3.parse-object-xml reply}}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
+    }
+  }
+  
+  || --------------------------------------------
+  || Get folder
+  {method public {get-dir key:String}:ObjectsInfo
+    def verb = HttpRequestMethod.get
+    let url:Url = {self.s3.return-signature-and-url self.name, "", verb}
+    set url = {url.set-query  "?prefix=" & key & "&delimiter=/"}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    
+    {try
+        set reply = {open-http-file url, {self.s3.get-headers}, verb}
+        {return {self.s3.parse-object-xml reply}}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
+    }
+  }
+  
+  || --------------------------------------------
+  || Get object data
+  || (param)
+  || key: Object name
+  || (return)
+  || Object data
+  {method public {get-object key:String}:HttpByteInputStream
+    
+    def verb = HttpRequestMethod.get
+    let uri:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    
+    {try
+        set reply = {open-http-file uri, {self.s3.get-headers}, verb}
+        {return reply}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
+    }
+  }
+  
+  || --------------------------------------------
+  || Put folder
+  || (param)
+  || key: folder name
+  || acl: ACL�@(e.g. "public-read")
+  {method public {put-dir
                      key:String,
-                     uri:Url,
                      acl:#String = null
                  }:void
     
-    def content-type = {file-extension-to-mime-type {url "." & key}.extension}
     def verb = HttpRequestMethod.put
     
     {if-non-null acl then
         {self.s3.set-amz-headers "x-amz-acl", acl}
     }
-    {if-non-null content-type then
-        {self.s3.set-headers "Content-Type", content-type}
-    }
+    set key = key & "/"
+    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
     
-    let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
-    
-    {open-http-file
-        url,
-        {self.s3.get-headers},
-        verb,
-        data = {ByteArrayHttpRequestData {open-byte-file uri}}
+    {try
+        set reply = {open-http-file url, {self.s3.get-headers}, verb}
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
     }
   }
   
   || --------------------------------------------
-  || put-object-by-bytes
-  || オブジェクトをアップロードする
+  || Put object by bytes
   || (param)
-  || key: アップロードするオブジェクト名
-  || object: アップロードするオブジェクト
-  || acl: ACL指定　(例：public-read)
+  || key: object name
+  || object: object data
+  || acl: ACL�@(e.g. "public-read")
   {method public {put-object-by-bytes
                      key:String,
                      object:ByteArray,
                      acl:#String = null
                  }:void
     
-    def content-type = {file-extension-to-mime-type {url "." & key}.extension}
+    def content-type = {file-extension-to-mime-type {url "./" & key}.extension}
     def verb = HttpRequestMethod.put
     
     {if-non-null acl then
@@ -114,40 +176,77 @@
         {self.s3.set-headers "Content-Type", content-type}
     }
     
-    let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
+    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
     
-    {open-http-file
-        url,
-        {self.s3.get-headers},
-        verb,
-        data = {ByteArrayHttpRequestData object}
+    {try
+        set reply = {open-http-file
+                        url,
+                        {self.s3.get-headers},
+                        verb,
+                        data = {ByteArrayHttpRequestData object}
+                    }
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
     }
   }
   
   || --------------------------------------------
-  || delete-bucket
-  || バケットを削除する
-  {method public {delete-bucket}:void
+  || Put object by URL (file path)
+  || (param)
+  || key: object name
+  || uri: file path
+  || acl: ACL�@(e.g. "public-read")
+  {method public {put-object-by-url
+                     key:String,
+                     uri:Url,
+                     acl:#String = null
+                 }:void
     
-    def verb = HttpRequestMethod.delete
-    def key = "/"
-    let (signature:String, uri:Url) = {self.s3.return-signature-and-url self.name, key, verb}
+    def content-type = {file-extension-to-mime-type {url "./" & key}.extension}
+    def verb = HttpRequestMethod.put
     
-    {open-http-file uri, {self.s3.get-headers}, verb}
+    {if-non-null acl then
+        {self.s3.set-amz-headers "x-amz-acl", acl}
+    }
+    {if-non-null content-type then
+        {self.s3.set-headers "Content-Type", content-type}
+    }
+    
+    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    
+    {try
+        def data = {open-byte-file uri}
+        set reply = {open-http-file
+                        url,
+                        {self.s3.get-headers},
+                        verb,
+                        data = {ByteArrayHttpRequestData data}
+                    }
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.s3.initialize-headers}
+    }
   }
   
   || --------------------------------------------
-  || ファイルにオブジェクトを書き込む
+  || Write object to file
   {method package {write-file hbis:HttpByteInputStream, uri:Url}:void
     {with-open-streams bos:ByteOutputStream = {write-open-byte uri} do
         {bos.write {{{ByteInputStream-from {Array-of byte}} {hbis.read}}.read}}
         {bos.flush}
     }
-  } 
+  }
 }
 
 || ----------------------------------------------
-|| バケット一覧情報
+|| Bucket list
 {define-class public Buckets
   field public-get private-set owner:Owner
   field public-get private-set buckets:{Array-of Bucket}
@@ -166,5 +265,15 @@
                        ...
                    }:Buckets
     {return {Buckets owner, buckets}}
+  }
+  
+  {method public {find key:String}:{Array-of Bucket}
+    let ret:{Array-of Bucket} = {new {Array-of Bucket}}
+    {for b:Bucket in self.buckets do
+        {if {b.name.find-string key} >= 0 then
+            {ret.append b}
+        }
+    }
+    {return ret}
   }
 }
