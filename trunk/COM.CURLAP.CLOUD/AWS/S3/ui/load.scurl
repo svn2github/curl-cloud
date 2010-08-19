@@ -3,6 +3,14 @@
 {package COM.CURLAP.CLOUD.AWS.S3.UI,
     {compiler-directives careful? = true}
 }
+{import * from CURL.DATA-ACCESS.BASE}
 {import * from CURL.GUI.STANDARD}
+{import * from CURL.ENGINE.APPLET}
+{import * from CURL.GRAPHICS.WINDOW}
+{import * from CURL.GUI.SHAPES}
 
 {include "interface.scurl"}
+{include "login.scurl"}
+{include "cloud.scurl"}
+{include "bucket-shape.scurl"}
+{include "bucket-space.scurl"}

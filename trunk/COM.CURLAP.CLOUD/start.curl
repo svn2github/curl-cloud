@@ -4,3 +4,9 @@
     {compiler-directives careful? = true}
 }
 
+{import * from COM.CURLAP.CLOUD.AWS.S3.UI}
+
+{do
+    let login:LoginDialog = {LoginDialog}
+    {login.show-dialog}
+}

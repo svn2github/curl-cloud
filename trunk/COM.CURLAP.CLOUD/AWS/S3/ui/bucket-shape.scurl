@@ -1,0 +1,45 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+
+{define-class public final BucketShape {inherits Frame}
+
+  field private _click-position-x:Distance = 0m
+  field private _click-position-y:Distance = 0m
+  field private _moving?:bool = false
+  
+  field private _name:String = ""
+
+  {constructor {default name:String, ...}
+    {construct-super
+        border-width = 1px,
+        border-color = {FillPattern.get-violet},
+        {splice ...}}
+
+    set self._name = name
+    
+    let is:ImageShape =
+        {ImageShape
+            {Pixmap.from-url
+                {url "./Image/Bucket.png"}
+            }
+        }
+    let txt:TextFlowBox = 
+        {TextFlowBox
+||--            width = 2.7cm,
+            horigin = "center",
+            vorigin = "center",
+            name,
+            color = FillPattern.white
+        }
+    
+    {is.add txt}
+
+    {self.add is}
+
+  }
+
+  {getter public {bucket-name}:String
+    {return self._name}
+  }
+}
+ 

@@ -1,0 +1,145 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+
+{persistent-data
+    "Amazon S3 API Demo",
+    duration = 1minutes
+}
+
+
+{define-class public final LoginDialog {inherits View}
+  field private _AccessKey:String = "ABC"
+  field private _SecretKey:String = "XYZ"
+
+  let private persistent-key:String = "Amazon S3"
+  let private pd-AccessKey:String = "AccessKey"
+  let private pd-SecretKey:String = "SecretKey"
+
+  {constructor public {default ...}
+    {construct-super
+        resizable? = false,
+        width = 410px,
+        height = 145px,
+        background = "#E0DFE3",
+||--        hstretch? = true,
+||--        vstretch? = true,
+        {splice ...}}
+
+    let pd:{HashTable-of String, String} = {{HashTable-of String, String}}
+    {try
+        {with-compiler-directives allow-implicit-any-casts? = true do
+            set pd = {get-persistent-data LoginDialog.persistent-key}
+            set self._AccessKey = {pd.get-if-exists LoginDialog.pd-AccessKey}
+            set self._SecretKey = {pd.get-if-exists LoginDialog.pd-SecretKey}
+            {output "AccessKey: [" & self._AccessKey & "]"}
+            {output "SecretKey: [" & self._SecretKey & "]"}
+        }
+     catch not-found:KeyNotFoundException do
+        set self._AccessKey = ""
+        set self._SecretKey = ""
+        {output "KeyNotFoundException"}
+     catch e:Exception do
+        set self._AccessKey = ""
+        set self._SecretKey = ""
+        {output "Exception !!!!!"}
+    }
+    
+    let icon:ImageGraphic = {ImageGraphic {url "./Image/S3Mark.png"}}
+    
+    let tf-Access:TextField =
+        {TextField
+            value = self._AccessKey,
+            max-chars = 50,
+            prompt = "アクセスキー"}
+    let pf-Secret:PasswordField =
+        {PasswordField
+            value = self._SecretKey,
+            max-chars = 50,
+            prompt = "シークレットキー"}
+    
+    let cb-OK:CommandButton =
+        {CommandButton
+            label = "OK",
+            width = 80px, height = 24px,
+            shadow-spec = {ShadowSpec},
+            {on Action at b:CommandButton do
+                || TODO: Amazon S3へのログインを行う。　失敗したら、ダイアログ表示
+                
+                || Amazon S3へのログイン成功時
+                || TODO: Amazon S3へのアクセス情報の引数を追加する
+                let cloud:CloudDialog = {CloudDialog
+                                            self
+                                        }
+                {cloud.show-dialog}
+                {self.hide}
+                
+                set self._AccessKey = tf-Access.value
+                set self._SecretKey = pf-Secret.value
+                {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
+                {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
+                {set-persistent-data LoginDialog.persistent-key, pd}
+                {commit-persistent-data}
+                {output "AccessKey: [" & self._AccessKey & "]"}
+                {output "SecretKey: [" & self._SecretKey & "]"}
+            }}
+    
+    let cb-Cancel:CommandButton =
+        {CommandButton
+            label = "Cancel",
+            width = 80px, height = 24px,
+            shadow-spec = {ShadowSpec},
+            {on Action at b:CommandButton do
+                {self.close}
+            }}
+    
+    let layout:VBox =
+        {VBox
+||--            background = "#770000",
+            margin = 10px,
+            {HBox
+                valign = "center",
+                spacing = 8px,
+                icon,
+                {text Specify new values for existing Amazon S3 account.}
+            },
+            {Table
+                columns = 2,
+                {row-prototype
+                    {cell-prototype {text AccessKey:}},
+                    {cell-prototype tf-Access}
+                },
+                {row-prototype
+                    {cell-prototype {text SecretKey:}},
+                    {cell-prototype pf-Secret}
+                }
+            },
+            {Fill                 height = 8px},
+
+            {HBox
+                {Fill},
+                cb-OK,
+                {Fill width = 10px},
+                cb-Cancel
+            }
+        }
+    
+    {self.add layout}
+    set self.title = "Edit Amazon S3 Account"
+
+    {self.set-icon
+        {Pixmap.from-url  {url "./Image/S3Icon.png"}},
+        {Pixmap.from-url  {url "./Image/S3IconSmall.png"}}}
+    
+    {self.add-event-handler
+        {on WindowClose do
+            {exit}
+        }
+    }
+    
+    set self.visibility = WindowVisibility.normal
+  }
+
+  {method public {show-dialog}:void
+    {self.show center? = true}
+  }
+}

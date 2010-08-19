@@ -364,8 +364,8 @@
   field private add-object-button:CommandButton
   field private delete-selection-button:CommandButton
   field private path-up-level-button:CommandButton
-  field private return-button:CommandButton
-  field private title-frame:Frame
+||--  field private return-button:CommandButton
+||--  field private title-frame:Frame
   field private main-frame:SkinnableFrame
   
   {constructor public {default
@@ -377,8 +377,8 @@
     {construct-super.Frame ...}
     
     set self.main-frame = {SkinnableFrame}
-    set self.title-frame =
-        {Frame font-size = 18pt, font-weight = FontWeight.bold}
+||++set self.title-frame =
+||++    {Frame font-size = 18pt, font-weight = FontWeight.bold}
     set self.record-grid =
         {RecordGrid
             width = {make-elastic preferred-size = 50cm}
@@ -398,12 +398,12 @@
             label = {hlmessage Delete Selection},
             bound-command = {self.get-command "bucketbrowser.delete-selection"}
         }
-    set self.return-button =
-        {CommandButton
-            label = {hlmessage Return to Cloud},
-            width = 3cm,
-            bound-command = {self.get-command "bucketbrowser.return-to-cloud"}
-        }
+||++set self.return-button =
+||++    {CommandButton
+||++        label = {hlmessage Return to Cloud},
+||++        width = 3cm,
+||++        bound-command = {self.get-command "bucketbrowser.return-to-cloud"}
+||++    }
     set self.path-up-level-button =
         {CommandButton
             label = {hlmessage Parent Dir},
@@ -522,20 +522,20 @@
                     }
             }
         }
-     case "bucketbrowser.return-to-cloud" do
-        {return
-            {SimpleCommand
-                "bucketbrowser.return-to-cloud",
-                execute-proc =
-                    {proc {}:void
-                        {self.return-to-cloud}
-                    },
-                enabled-proc =
-                    {proc {}:bool
-                        {return true}
-                    }
-            }
-        }
+||++ case "bucketbrowser.return-to-cloud" do
+||++    {return
+||++        {SimpleCommand
+||++            "bucketbrowser.return-to-cloud",
+||++            execute-proc =
+||++                {proc {}:void
+||++                    {self.return-to-cloud}
+||++                },
+||++            enabled-proc =
+||++                {proc {}:bool
+||++                    {return true}
+||++                }
+||++        }
+||++    }
     }
     
     {return {super.create-command name}}
@@ -554,10 +554,10 @@
   {method private {note-bucket-model-changed}:void
     {if-non-null m = self.bucket-model then
         set self.record-grid.record-source = m.record-set
-        {self.title-frame.add replace? = true, m.bucket.name}
+||++    {self.title-frame.add replace? = true, m.bucket.name}
      else
         set self.record-grid.record-source = null
-        {self.title-frame.clear}
+||++    {self.title-frame.clear}
     }
     {self.request-update-commands}
   }
@@ -731,21 +731,22 @@
         {VBox
             width = {add-stretch},
             spacing = 2mm,
-            {HBox
-                valign = 0.5,
-                {Frame
-                    width = {add-stretch},
-                    {Fill width = 3cm}
-                },
-                self.title-frame,
-                {Frame
-                    width = {add-stretch before? = true, after? = false},
-                    halign = 1,
-                    self.return-button
-                }
-            },
+||--            {HBox
+||--                valign = 0.5,
+||--                {Frame
+||--                    width = {add-stretch},
+||--                    {Fill width = 3cm}
+||--                },
+||--                self.title-frame
+||--||++            {Frame
+||--||++                width = {add-stretch before? = true, after? = false},
+||--||++                halign = 1,
+||--||++                self.return-button
+||--||++            }
+||--            },
             {HBox
                 width = {add-stretch},
+                height = 40px,
                 spacing = 3mm,
                 self.path-up-level-button,
                 {Fill},
@@ -756,7 +757,7 @@
             self.record-grid
         }
     }
-    {self.add self.main-frame}
+    {self.add self.main-frame, replace? = true}
   }
   
   {method private {get-selected-keys}:{Array-of String}
@@ -857,9 +858,9 @@
     {self.bucket-model.go-to-parent}
   }
   
-  {method public open {return-to-cloud}:void
-    ||----> TODO: implement to close bucket and return to bucket browser
-  }
+||--  {method public open {return-to-cloud}
+||--    ||----> TODO: implement to close bucket and return to bucket browser
+||--  }
   
 }
 

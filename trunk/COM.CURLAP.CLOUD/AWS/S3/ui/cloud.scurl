@@ -1,0 +1,631 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+
+{define-class public final CloudDialog {inherits View}
+  
+  field private _click-position-x:Distance = 0m
+  field private _click-position-y:Distance = 0m
+  field private _moving?:bool = false
+  field private _moving-child:#Graphic
+  field private _animate-timer:Timer
+  field private _animate-mode:int = -1
+  field private _animate-up:bool = true
+  field private _canvas:Canvas
+  field private _buckets:{HashTable-of String, String} = {{HashTable-of String, String}}
+||--  field private _buckets:{HashTable-of String, Bucket} = {{HashTable-of String, Bucket}}    || @@@
+  field private _backet-space:#BucketSpace = null
+
+  field private _context-normal:EventHandler
+  field private _context-back:EventHandler
+  
+  let private CloudImage01-path:Path = {Path}
+  let private CloudImage02-path:Path = {Path}
+  let private CloudImage03-path:Path = {Path}
+  let private CloudImage90-path:Path = {Path}
+  let private CloudImage-path:Path = {Path}
+  
+  {constructor {default login:LoginDialog, ...}
+    {construct-super
+        decorations? = false,
+        width = 615px,
+        height = 429px,
+        background = "#E0DFE3",
+||--        hstretch? = true,
+||--        vstretch? = true,
+||--        {context-popup
+||--            menu-pane = 
+||--                {MenuPane
+||--                    {MenuAction label = "Close",
+||--                        {on Action do
+||--                            {self.close}
+||--                        }
+||--                    }
+||--                }
+||--        },
+        {splice ...}}
+
+    set self.title = "Amazon S3 "
+
+    {self.set-icon
+        {Pixmap.from-url  {url "./Image/S3Icon.png"}},
+        {Pixmap.from-url  {url "./Image/S3IconSmall.png"}}}
+    set self.visibility = WindowVisibility.normal
+
+    || Closeイベント
+    {self.add-event-handler
+        {on WindowClose do
+            set self._animate-timer.repeat = 0
+            {self.hide}
+            {login.show-dialog}
+            {self.destroy}
+        }
+    }
+
+    || Viewの移動処理
+    let pm:EventHandler =
+        {on e:PointerMotion at v:View do
+            {if-non-null self._moving-child then
+                {self._canvas.shift-xy
+                    self._moving-child,
+                    e.x - self._click-position-x,
+                    e.y - self._click-position-y}
+                set self._click-position-x = e.x
+                set self._click-position-y = e.y
+             else
+                let (x:Distance, y:Distance) = {v.get-window-position}
+                {v.set-window-position
+                    e.x + x - self._click-position-x,
+                    e.y + y - self._click-position-y}
+            }
+        }
+    
+    {self.add-event-handler
+        {on e:PointerPress at v:View do
+            {if e.button == 1 then
+                {if e.click-count == 2 then
+                    {output "Double Click"}
+                    def child = {self._canvas.graphical-child-visible-at e.x, e.y}
+                    {if-non-null child then
+                        {if child isa BucketShape then
+                            {self.disp-bucket-space child asa BucketShape}
+                        }
+                    }
+                 elseif not self._moving? then
+                    set self._moving-child = {self._canvas.graphical-child-visible-at e.x, e.y}
+                    {if not self._moving-child isa BucketShape then
+                        set self._moving-child = null
+                    }
+                    {if-non-null self._moving-child then
+                        {self._canvas.set-child-index self._moving-child, self._canvas.child-array.size - 1}
+                    }
+                    set self._click-position-x = e.x
+                    set self._click-position-y = e.y
+                    {v.add-event-handler pm}
+                    set self._moving? = true
+                }
+            }
+        }
+    }
+    
+    {self.add-event-handler
+        {on e:PointerRelease at v:View do
+            {if e.button == 1 then
+                {if self._moving? then
+                    {try
+                        {v.remove-event-handler pm}
+                        set self._moving? = false
+                        set self._moving-child = null
+                     catch e:Error do
+                        {dump e}
+                    }
+                }
+            }
+        }
+    }
+
+    set self._context-normal =
+        {context-popup
+            menu-pane = 
+                {MenuPane
+                    {MenuAction label = "Add Bucket",
+                        {on Action do
+                            || TODO: バケットの追加
+                            let bucket-name:#String =
+                                {popup-text-query
+                                    title = "Add Bucket",
+                                    "Backet Name: "}
+                            {if-non-null bucket-name then
+                                {if {self._buckets.key-exists? bucket-name} then
+                                    def msg = {popup-message bucket-name & " is already registered."}
+                                 else
+                                    || TODO: バケットを追加して、その結果をself._bucketsに設定する
+                                    def bs = {BucketShape bucket-name}
+                                    {self._canvas.add bs, x = 250px, y = 200px}
+                                    {self._buckets.set bucket-name, bucket-name}
+                                    {self.refresh-buckets}
+                                }
+                            }
+                        }
+                    },
+                    {menu-separator},
+                    {MenuAction label = "Logout",
+                        {on Action do
+                            def ret = {popup-question "Logout?"}
+                            {if ret == Dialog.yes then
+                                || TODO: ログアウト処理が必要であれば、ここに・・・。
+                                {self.close}
+                            }
+                        }
+                    }
+                }
+        }
+    
+    set self._context-back =
+        {context-popup
+            menu-pane = 
+                {MenuPane
+                    {MenuAction label = "Back",
+                        {on Action do
+                            def ret = {popup-question "Back?"}
+                            {if ret == Dialog.yes then
+                                {self.return-bucket-space}
+                            }
+                        }
+                    }
+                }
+        }
+    
+    
+    {self.initialize}
+    {self.set-context-normal}
+    set self._canvas = {Canvas}
+    {self.add self._canvas}
+    
+
+    || もくもくタイマー
+    set self._animate-mode = 0
+    set self._animate-up = true
+    set self._animate-timer =
+        {Timer
+            repeat = 0,
+            {on TimerEvent do
+                {if self._animate-up then
+                    {inc self._animate-mode}
+                 else
+                    {dec self._animate-mode}
+                }
+                {if self._animate-mode > 2 then
+                    set self._animate-up = not self._animate-up
+                    set self._animate-mode = 1
+                 elseif self._animate-mode < 0 then
+                    set self._animate-up = not self._animate-up
+                    set self._animate-mode = 1
+                }
+
+                {switch self._animate-mode
+                 case 0 do
+                    set CloudDialog.CloudImage-path = CloudDialog.CloudImage01-path
+                 case 1 do
+                    set CloudDialog.CloudImage-path = CloudDialog.CloudImage02-path
+                 case 2 do
+                    set CloudDialog.CloudImage-path = CloudDialog.CloudImage03-path
+                }
+                {self.set-window-shape
+                    {Region.from-path CloudDialog.CloudImage-path}
+                }
+||++            {self.request-draw}
+            },
+            interval = 0.4s
+        }
+
+    || シェイプの設定
+    set CloudDialog.CloudImage-path = CloudDialog.CloudImage01-path
+    {self.set-window-shape
+        {Region.from-path CloudDialog.CloudImage-path}
+    }
+  }
+
+||--  {method public {draw r2d:Renderer2d}:void
+||--    {super.draw r2d}
+||--    {r2d.render-path CloudDialog.CloudImage-path, stroke-thickness = {any-to-Distance 2px}}
+||--  }
+
+  {method public {show-dialog}:void
+    {self.show center? = true}
+    {self.refresh-buckets}
+    set self._animate-timer.repeat = -1
+  }
+
+  {method private {refresh-buckets}:void
+    
+  }
+
+  {method package {set-context-normal}:void
+    {self.add-event-handler self._context-normal}
+  }
+
+  {method package {remove-context-normal}:void
+    {self.remove-event-handler self._context-normal}
+  }
+
+  {method package {set-context-back}:void
+    {self.add-event-handler self._context-back}
+  }
+
+  {method package {remove-context-back}:void
+    {self.remove-event-handler self._context-back}
+  }
+
+  {method private {disp-bucket-space backet:BucketShape}:void
+    set self._backet-space = {BucketSpace
+                                 self,
+                                 backet,
+                                 width = 558px,
+                                 height = 401px}
+    
+    {self._canvas.add self._backet-space, x = 28px, y = 14px}
+    
+    set self._animate-timer.repeat = 0
+    set CloudDialog.CloudImage-path = CloudDialog.CloudImage90-path
+    {self.set-window-shape
+        {Region.from-path CloudDialog.CloudImage-path}
+    }
+||++{self.request-draw}
+    
+    {self.remove-context-normal}
+    {self.set-context-back}
+  }
+
+  {method package {return-bucket-space}:void
+
+    {self._backet-space.detach}
+    set self._backet-space = null
+    
+    set self._animate-timer.repeat = -1
+    set self._animate-up = true
+    set self._animate-mode = 0
+    set CloudDialog.CloudImage-path = CloudDialog.CloudImage01-path
+    {self.set-window-shape
+        {Region.from-path CloudDialog.CloudImage-path}
+    }
+||++{self.request-draw}
+    
+    {self.remove-context-back}
+    {self.set-context-normal}
+  }
+  
+  
+  ||  ------------------------------------------------------------
+  ||  ------------------------------------------------------------
+  ||  ------------------------------------------------------------
+
+  {method private {initialize}:void
+    
+    {if CloudDialog.CloudImage01-path.empty? then
+        {CloudDialog.CloudImage01-path.move-to
+            {Distance2d {any-to-Distance 30.137644px}, {any-to-Distance 251.48265px}}}
+        {CloudDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance -21.509205px}, {any-to-Distance 219.34198px}},
+            {Distance2d {any-to-Distance 1.413269px}, {any-to-Distance 145.81817px}},
+            {Distance2d {any-to-Distance 55.499844px}, {any-to-Distance 143.84563px}}}
+        {CloudDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 50.905019px}, {any-to-Distance 42.237839px}},
+            {Distance2d {any-to-Distance 152.84019px}, {any-to-Distance 20.191063px}},
+            {Distance2d {any-to-Distance 201.90461px}, {any-to-Distance 51.026922px}}}
+        {CloudDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 227.83439px}, {any-to-Distance 3.4953799px}},
+            {Distance2d {any-to-Distance 290.29945px}, {any-to-Distance 3.782293px}},
+            {Distance2d {any-to-Distance 318.64566px}, {any-to-Distance 32.845938px}}}
+        {CloudDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 340.6813px}, {any-to-Distance -2.6449621px}},
+            {Distance2d {any-to-Distance 392.29941px}, {any-to-Distance -11.38829px}},
+            {Distance2d {any-to-Distance 424.38695px}, {any-to-Distance 22.79404px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance 32.89717px}, {any-to-Distance -33.848231px}},
+            {Distance2d {any-to-Distance 101.25118px}, {any-to-Distance -31.453343px}},
+            {Distance2d {any-to-Distance 121.52552px}, {any-to-Distance 30.629629px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance 42.74244px}, {any-to-Distance 15.056506px}},
+            {Distance2d {any-to-Distance 64.02368px}, {any-to-Distance 52.983261px}},
+            {Distance2d {any-to-Distance 49.26649px}, {any-to-Distance 98.542011px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance 32.21483px}, {any-to-Distance 37.11329px}},
+            {Distance2d {any-to-Distance 30.5257px}, {any-to-Distance 125.34818px}},
+            {Distance2d {any-to-Distance -63.13695px}, {any-to-Distance 146.43185px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -5.03186px}, {any-to-Distance 67.59365px}},
+            {Distance2d {any-to-Distance -80.71302px}, {any-to-Distance 92.50224px}},
+            {Distance2d {any-to-Distance -124.88819px}, {any-to-Distance 65.54271px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -29.70794px}, {any-to-Distance 74.66674px}},
+            {Distance2d {any-to-Distance -127.06028px}, {any-to-Distance 84.34405px}},
+            {Distance2d {any-to-Distance -172.24992px}, {any-to-Distance 23.94041px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -63.29439px}, {any-to-Distance 31.93553px}},
+            {Distance2d {any-to-Distance -121.53434px}, {any-to-Distance 6.01851px}},
+            {Distance2d {any-to-Distance -152.137093px}, {any-to-Distance -37.80183px}}}
+        {CloudDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -48.774771px}, {any-to-Distance 2.44278px}},
+            {Distance2d {any-to-Distance -92.44051px}, {any-to-Distance -47.66764px}},
+            {Distance2d {any-to-Distance -52.629163px}, {any-to-Distance -98.59617px}}}
+    }
+    
+    {if CloudDialog.CloudImage02-path.empty? then
+        {CloudDialog.CloudImage02-path.move-to
+            {Distance2d {any-to-Distance 475.8125px}, {any-to-Distance 5.1875px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 456.52518px}, {any-to-Distance 5.6028759px}},
+            {Distance2d {any-to-Distance 437.35123px}, {any-to-Distance 14.125354px}},
+            {Distance2d {any-to-Distance 424.71875px}, {any-to-Distance 28.78125px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 406.8548px}, {any-to-Distance 5.8996407px}},
+            {Distance2d {any-to-Distance 371.9321px}, {any-to-Distance -1.7294556px}},
+            {Distance2d {any-to-Distance 346.4375px}, {any-to-Distance 12.6875px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 335.2106px}, {any-to-Distance 18.534642px}},
+            {Distance2d {any-to-Distance 325.96156px}, {any-to-Distance 28.185491px}},
+            {Distance2d {any-to-Distance 319.71875px}, {any-to-Distance 39.25px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 291.96148px}, {any-to-Distance 7.0832005px}},
+            {Distance2d {any-to-Distance 234.35397px}, {any-to-Distance 10.261535px}},
+            {Distance2d {any-to-Distance 210.46541px}, {any-to-Distance 45.574513px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 207.94395px}, {any-to-Distance 49.114573px}},
+            {Distance2d {any-to-Distance 205.85686px}, {any-to-Distance 52.914378px}},
+            {Distance2d {any-to-Distance 203.71875px}, {any-to-Distance 56.6875px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 166.02554px}, {any-to-Distance 31.942257px}},
+            {Distance2d {any-to-Distance 110.43981px}, {any-to-Distance 39.584457px}},
+            {Distance2d {any-to-Distance 80.9375px}, {any-to-Distance 73.75px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 63.719406px}, {any-to-Distance 94.099677px}},
+            {Distance2d {any-to-Distance 57.879975px}, {any-to-Distance 121.67226px}},
+            {Distance2d {any-to-Distance 60px}, {any-to-Distance 147.84375px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 34.209302px}, {any-to-Distance 146.28233px}},
+            {Distance2d {any-to-Distance 10.314454px}, {any-to-Distance 166.68411px}},
+            {Distance2d {any-to-Distance 6.34375px}, {any-to-Distance 191.8125px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -4.3409286px}, {any-to-Distance 22.22226px}},
+            {Distance2d {any-to-Distance 7.363808px}, {any-to-Distance 46.17847px}},
+            {Distance2d {any-to-Distance 27.21875px}, {any-to-Distance 56.90625px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 4.035519px}, {any-to-Distance 3.93911px}},
+            {Distance2d {any-to-Distance -2.498382px}, {any-to-Distance 7.59727px}},
+            {Distance2d {any-to-Distance -4.0625px}, {any-to-Distance 10.9375px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -12.282831px}, {any-to-Distance 17.69192px}},
+            {Distance2d {any-to-Distance -14.859608px}, {any-to-Distance 43.07363px}},
+            {Distance2d {any-to-Distance -1.3125px}, {any-to-Distance 60.84375px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 12.632192px}, {any-to-Distance 17.82756px}},
+            {Distance2d {any-to-Distance 35.305977px}, {any-to-Distance 27.43351px}},
+            {Distance2d {any-to-Distance 57px}, {any-to-Distance 25.59375px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 23.44496px}, {any-to-Distance 36.11997px}},
+            {Distance2d {any-to-Distance 68.32455px}, {any-to-Distance 58.60522px}},
+            {Distance2d {any-to-Distance 111.53125px}, {any-to-Distance 50.625px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 13.86561px}, {any-to-Distance -2.32965px}},
+            {Distance2d {any-to-Distance 27.24606px}, {any-to-Distance -7.16827px}},
+            {Distance2d {any-to-Distance 39.78125px}, {any-to-Distance -13.84375px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 22.8983px}, {any-to-Distance 34.4005px}},
+            {Distance2d {any-to-Distance 69.92479px}, {any-to-Distance 49.19775px}},
+            {Distance2d {any-to-Distance 108.86527px}, {any-to-Distance 35.6854px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 28.07573px}, {any-to-Distance -9.20543px}},
+            {Distance2d {any-to-Distance 50.89402px}, {any-to-Distance -32.50216px}},
+            {Distance2d {any-to-Distance 60.19723px}, {any-to-Distance -60.46665px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 37.85087px}, {any-to-Distance 26.367px}},
+            {Distance2d {any-to-Distance 97.373px}, {any-to-Distance 9.57207px}},
+            {Distance2d {any-to-Distance 116.0625px}, {any-to-Distance -32.6875px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 4.36399px}, {any-to-Distance -9.41352px}},
+            {Distance2d {any-to-Distance 6.47972px}, {any-to-Distance -19.76462px}},
+            {Distance2d {any-to-Distance 7px}, {any-to-Distance -30.1875px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 32.20632px}, {any-to-Distance -5.89498px}},
+            {Distance2d {any-to-Distance 64.25099px}, {any-to-Distance -25.28701px}},
+            {Distance2d {any-to-Distance 76.03623px}, {any-to-Distance -56.96847px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 10.87374px}, {any-to-Distance -28.09699px}},
+            {Distance2d {any-to-Distance 6.59661px}, {any-to-Distance -62.48776px}},
+            {Distance2d {any-to-Distance -13.59873px}, {any-to-Distance -85.31278px}}}
+        {CloudDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 10.12543px}, {any-to-Distance -26.1473px}},
+            {Distance2d {any-to-Distance 5.59763px}, {any-to-Distance -59.318156px}},
+            {Distance2d {any-to-Distance -16.31315px}, {any-to-Distance -78.194595px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 565.80703px}, {any-to-Distance 66.53104px}},
+            {Distance2d {any-to-Distance 554.72309px}, {any-to-Distance 60.461132px}},
+            {Distance2d {any-to-Distance 543.0625px}, {any-to-Distance 56.65625px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 536.13036px}, {any-to-Distance 30.288921px}},
+            {Distance2d {any-to-Distance 513.11966px}, {any-to-Distance 7.916551px}},
+            {Distance2d {any-to-Distance 485.46875px}, {any-to-Distance 5.59375px}}}
+        {CloudDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 482.26258px}, {any-to-Distance 5.2660393px}},
+            {Distance2d {any-to-Distance 479.03819px}, {any-to-Distance 5.0557292px}},
+            {Distance2d {any-to-Distance 475.8125px}, {any-to-Distance 5.1875px}}}
+    }
+    
+    {if CloudDialog.CloudImage03-path.empty? then
+        {CloudDialog.CloudImage03-path.move-to
+            {Distance2d {any-to-Distance 475.9375px}, {any-to-Distance 9.1875px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 456.05269px}, {any-to-Distance 9.5206154px}},
+            {Distance2d {any-to-Distance 436.60974px}, {any-to-Distance 19.247514px}},
+            {Distance2d {any-to-Distance 424.53125px}, {any-to-Distance 35.09375px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 406.6509px}, {any-to-Distance 7.5227837px}},
+            {Distance2d {any-to-Distance 364.46656px}, {any-to-Distance 0.59631218px}},
+            {Distance2d {any-to-Distance 339.28125px}, {any-to-Distance 22.125px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 331.15608px}, {any-to-Distance 28.561237px}},
+            {Distance2d {any-to-Distance 325.04467px}, {any-to-Distance 37.111916px}},
+            {Distance2d {any-to-Distance 320.375px}, {any-to-Distance 46.28125px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 296.12027px}, {any-to-Distance 12.094465px}},
+            {Distance2d {any-to-Distance 238.5551px}, {any-to-Distance 12.939375px}},
+            {Distance2d {any-to-Distance 214.46875px}, {any-to-Distance 46.75px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 210.95209px}, {any-to-Distance 51.696542px}},
+            {Distance2d {any-to-Distance 208.09334px}, {any-to-Distance 57.070993px}},
+            {Distance2d {any-to-Distance 205.125px}, {any-to-Distance 62.375px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 165.97135px}, {any-to-Distance 33.706165px}},
+            {Distance2d {any-to-Distance 103.10415px}, {any-to-Distance 44.061554px}},
+            {Distance2d {any-to-Distance 77.15625px}, {any-to-Distance 85.75px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 65.060446px}, {any-to-Distance 105.44233px}},
+            {Distance2d {any-to-Distance 61.907316px}, {any-to-Distance 129.44504px}},
+            {Distance2d {any-to-Distance 64.34375px}, {any-to-Distance 152.1875px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 35.385644px}, {any-to-Distance 147.44305px}},
+            {Distance2d {any-to-Distance 7.6189386px}, {any-to-Distance 174.08648px}},
+            {Distance2d {any-to-Distance 9.4375px}, {any-to-Distance 202.84375px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 0.5200481px}, {any-to-Distance 18.23225px}},
+            {Distance2d {any-to-Distance 12.040756px}, {any-to-Distance 35.01488px}},
+            {Distance2d {any-to-Distance 27.625px}, {any-to-Distance 43.8125px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 4.839666px}, {any-to-Distance 5.59145px}},
+            {Distance2d {any-to-Distance -1.504927px}, {any-to-Distance 11.8667px}},
+            {Distance2d {any-to-Distance -4.90625px}, {any-to-Distance 16.15625px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -12.887198px}, {any-to-Distance 18.32969px}},
+            {Distance2d {any-to-Distance -12.448307px}, {any-to-Distance 47.12441px}},
+            {Distance2d {any-to-Distance 5.3125px}, {any-to-Distance 62.375px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 12.806559px}, {any-to-Distance 12.80842px}},
+            {Distance2d {any-to-Distance 31.777154px}, {any-to-Distance 18.77521px}},
+            {Distance2d {any-to-Distance 49.78125px}, {any-to-Distance 16.75px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 24.21895px}, {any-to-Distance 39.84343px}},
+            {Distance2d {any-to-Distance 75.84117px}, {any-to-Distance 62.41849px}},
+            {Distance2d {any-to-Distance 121.02297px}, {any-to-Distance 48.06535px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 10.24814px}, {any-to-Distance -2.8144px}},
+            {Distance2d {any-to-Distance 20.15653px}, {any-to-Distance -7.1944px}},
+            {Distance2d {any-to-Distance 29.57078px}, {any-to-Distance -12.3466px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 24.57233px}, {any-to-Distance 41.08381px}},
+            {Distance2d {any-to-Distance 84.4731px}, {any-to-Distance 54.40787px}},
+            {Distance2d {any-to-Distance 124.53125px}, {any-to-Distance 28.59375px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 19.87113px}, {any-to-Distance -12.07155px}},
+            {Distance2d {any-to-Distance 34.87049px}, {any-to-Distance -32.11746px}},
+            {Distance2d {any-to-Distance 41.03125px}, {any-to-Distance -54.59375px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 35.29349px}, {any-to-Distance 28.81887px}},
+            {Distance2d {any-to-Distance 95.11769px}, {any-to-Distance 14.22132px}},
+            {Distance2d {any-to-Distance 114.125px}, {any-to-Distance -26.9375px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 4.9521px}, {any-to-Distance -10.19826px}},
+            {Distance2d {any-to-Distance 6.96926px}, {any-to-Distance -21.62872px}},
+            {Distance2d {any-to-Distance 7.25px}, {any-to-Distance -32.90625px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 31.78536px}, {any-to-Distance -4.83946px}},
+            {Distance2d {any-to-Distance 63.90451px}, {any-to-Distance -23.38117px}},
+            {Distance2d {any-to-Distance 75.9375px}, {any-to-Distance -54.5px}}}
+        {CloudDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 10.95998px}, {any-to-Distance -27.47544px}},
+            {Distance2d {any-to-Distance 6.35863px}, {any-to-Distance -61.61943px}},
+            {Distance2d {any-to-Distance -14.25px}, {any-to-Distance -83.5625px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 598.23706px}, {any-to-Distance 126.71967px}},
+            {Distance2d {any-to-Distance 592.07501px}, {any-to-Distance 91.030017px}},
+            {Distance2d {any-to-Distance 567.1875px}, {any-to-Distance 73.59375px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 558.98882px}, {any-to-Distance 67.359484px}},
+            {Distance2d {any-to-Distance 549.60186px}, {any-to-Distance 62.813296px}},
+            {Distance2d {any-to-Distance 539.78125px}, {any-to-Distance 59.78125px}}}
+        {CloudDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 533.29577px}, {any-to-Distance 30.881544px}},
+            {Distance2d {any-to-Distance 506.15675px}, {any-to-Distance 7.244848px}},
+            {Distance2d {any-to-Distance 475.9375px}, {any-to-Distance 9.1875px}}}
+    }
+
+    {if CloudDialog.CloudImage90-path.empty? then
+        {CloudDialog.CloudImage90-path.move-to
+            {Distance2d {any-to-Distance 476.4375px}, {any-to-Distance 1.0625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 459.58754px}, {any-to-Distance 1.2493447px}},
+            {Distance2d {any-to-Distance 442.93578px}, {any-to-Distance 7.1082584px}},
+            {Distance2d {any-to-Distance 430.09375px}, {any-to-Distance 17.59375px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 426.18176px}, {any-to-Distance 17.350399px}},
+            {Distance2d {any-to-Distance 422.20092px}, {any-to-Distance 17.126699px}},
+            {Distance2d {any-to-Distance 418.1875px}, {any-to-Distance 16.90625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 393.19786px}, {any-to-Distance -4.1381296px}},
+            {Distance2d {any-to-Distance 359.47415px}, {any-to-Distance -2.9600467px}},
+            {Distance2d {any-to-Distance 335.96875px}, {any-to-Distance 14.1875px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 326.5984px}, {any-to-Distance 14.066983px}},
+            {Distance2d {any-to-Distance 317.09152px}, {any-to-Distance 14px}},
+            {Distance2d {any-to-Distance 307.46875px}, {any-to-Distance 14px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 298.83426px}, {any-to-Distance 14px}},
+            {Distance2d {any-to-Distance 290.30799px}, {any-to-Distance 14.058971px}},
+            {Distance2d {any-to-Distance 281.875px}, {any-to-Distance 14.15625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 271.48342px}, {any-to-Distance 12.244897px}},
+            {Distance2d {any-to-Distance 260.46443px}, {any-to-Distance 12.365822px}},
+            {Distance2d {any-to-Distance 249.8125px}, {any-to-Distance 14.78125px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 124.23613px}, {any-to-Distance 18.129056px}},
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 32.160551px}},
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 49px}}}
+        {CloudDialog.CloudImage90-path.line-to
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 150.96875px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance -4.3145283px}, {any-to-Distance 170.48482px}},
+            {Distance2d {any-to-Distance -12.372111px}, {any-to-Distance 224.91252px}},
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 251.40625px}}}
+        {CloudDialog.CloudImage90-path.line-to
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 251.65625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 6.9824624px}, {any-to-Distance 281.23082px}},
+            {Distance2d {any-to-Distance 12.116959px}, {any-to-Distance 310.48989px}},
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 329.34375px}}}
+        {CloudDialog.CloudImage90-path.line-to
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 376.5625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 30px}, {any-to-Distance 393.82632px}},
+            {Distance2d {any-to-Distance 129.05417px}, {any-to-Distance 408.18879px}},
+            {Distance2d {any-to-Distance 259.375px}, {any-to-Distance 411.0625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 292.69132px}, {any-to-Distance 433.07076px}},
+            {Distance2d {any-to-Distance 336.85886px}, {any-to-Distance 432.61927px}},
+            {Distance2d {any-to-Distance 369.78125px}, {any-to-Distance 410.6875px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 493.04007px}, {any-to-Distance 407.12104px}},
+            {Distance2d {any-to-Distance 585px}, {any-to-Distance 393.19401px}},
+            {Distance2d {any-to-Distance 585px}, {any-to-Distance 376.5625px}}}
+        {CloudDialog.CloudImage90-path.line-to
+            {Distance2d {any-to-Distance 585px}, {any-to-Distance 272.6875px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 624.49397px}, {any-to-Distance 237.29784px}},
+            {Distance2d {any-to-Distance 619.54245px}, {any-to-Distance 180.02704px}},
+            {Distance2d {any-to-Distance 595.1875px}, {any-to-Distance 151.96875px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 604.2362px}, {any-to-Distance 124.03329px}},
+            {Distance2d {any-to-Distance 599.69033px}, {any-to-Distance 98.995879px}},
+            {Distance2d {any-to-Distance 585px}, {any-to-Distance 80.3125px}}}
+        {CloudDialog.CloudImage90-path.line-to
+            {Distance2d {any-to-Distance 585px}, {any-to-Distance 49px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 585px}, {any-to-Distance 41.406864px}},
+            {Distance2d {any-to-Distance 565.77475px}, {any-to-Distance 34.390875px}},
+            {Distance2d {any-to-Distance 533.21875px}, {any-to-Distance 28.65625px}}}
+        {CloudDialog.CloudImage90-path.curve-to
+            {Distance2d {any-to-Distance 518.66691px}, {any-to-Distance 9.38067px}},
+            {Distance2d {any-to-Distance 497.41463px}, {any-to-Distance 0.82989026px}},
+            {Distance2d {any-to-Distance 476.4375px}, {any-to-Distance 1.0625px}}}
+    }
+  }
+
+}

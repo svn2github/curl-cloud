@@ -1,0 +1,49 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+
+{define-class public final BucketSpace {inherits Frame}
+
+  field private _cloud:CloudDialog
+  field private _backet:BucketShape
+
+  {constructor {default cloud:CloudDialog, backet:BucketShape, ...}
+    {construct-super
+        border-width = 1px,
+        border-color = {FillPattern.get-orange},
+        background = {FillPattern.from-url {url "./Image/BucketSpace.png"}},
+        {splice ...}}
+
+    set self._cloud = cloud
+    set self._backet = backet
+    
+    let bucket:Bucket = {Bucket}
+    let bucket-model:BucketModel = {BucketModel.default bucket}
+    let vb:VBox =
+        {VBox
+            horigin = "left",
+            vorigin = "top",
+            hstretch? = true,
+            margin = 8px,
+            {HBox
+                height = 70px,
+                {TextFlowBox
+                    border-width = 1px,
+                    border-color = {FillPattern.get-pink},
+                    horigin = "center",
+                    vorigin = "center",
+                    font-family = "ＭＳ Ｐゴシック",
+                    font-size = 24pt,
+                    self._backet.bucket-name,
+                    color = FillPattern.white
+                }
+            },
+            {BucketBrowser
+                height = 290px,
+                bucket-model = bucket-model
+            }
+        }
+    {self.add vb}
+  }
+
+}
+ 
