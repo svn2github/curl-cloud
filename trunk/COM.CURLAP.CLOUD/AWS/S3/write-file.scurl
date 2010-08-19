@@ -1,4 +1,4 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+{curl-file-attributes character-encoding = "utf8"}
 
 {define-proc package {write-file hbis:HttpByteInputStream, url:Url}:void
     {with-open-streams bos:ByteOutputStream = {write-open-byte url} do

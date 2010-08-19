@@ -1,4 +1,4 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+{curl-file-attributes character-encoding = "utf8"}
 
 {define-class public ObjectInfo
   field public-get private-set key:String

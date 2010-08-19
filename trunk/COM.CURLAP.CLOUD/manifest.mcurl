@@ -1,5 +1,5 @@
 {curl 7.0 manifest}
-{curl-file-attributes character-encoding = "shift-jis"}
+{curl-file-attributes character-encoding = "utf8"}
 {manifest COM.CURLAP.CLOUD}
 
 {component package COM.CURLAP.CLOUD.AWS.S3,

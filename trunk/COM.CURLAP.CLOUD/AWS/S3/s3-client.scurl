@@ -1,10 +1,10 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+{curl-file-attributes character-encoding = "utf8"}
 
 || ----------------------------------------------
-|| S3‚É‘Î‚µ‚Ä‚ÌƒŠƒNƒGƒXƒg‚ğì¬‚µ‘—M‚·‚éƒNƒ‰ƒX
+|| S3ã«å¯¾ã—ã¦ã®ãƒªã‚¯ã‚¨ã‚¹ãƒˆã‚’ä½œæˆã—é€ä¿¡ã™ã‚‹ã‚¯ãƒ©ã‚¹
 {define-class public S3Client
   
-  || HTTPƒŠƒNƒGƒXƒgƒwƒbƒ_[‚É—p‚¢‚éƒnƒbƒVƒ…ƒe[ƒuƒ‹
+  || HTTPãƒªã‚¯ã‚¨ã‚¹ãƒˆãƒ˜ãƒƒãƒ€ãƒ¼ã«ç”¨ã„ã‚‹ãƒãƒƒã‚·ãƒ¥ãƒ†ãƒ¼ãƒ–ãƒ«
   field private headers:HttpRequestHeaders =
       {HttpRequestHeaders.default 
         "Host", "",
@@ -13,16 +13,16 @@
   || x-amz headers
   field private amz-headers:{HashTable-of String, String} =
       {new {HashTable-of String, String}}
-  field private default-host:String || ƒzƒXƒg‰Šú’l
+  field private default-host:String || ãƒ›ã‚¹ãƒˆåˆæœŸå€¤
   field private access-key-id:String
   field private secret-key-id:String
         
   || --------------------------------------------
-  || ƒRƒ“ƒXƒgƒ‰ƒNƒ^
+  || ã‚³ãƒ³ã‚¹ãƒˆãƒ©ã‚¯ã‚¿
   || (param)
-  || access-key-id: Amazon S3‚ÉƒAƒNƒZƒX‚·‚é‚½‚ß‚ÌƒAƒNƒZƒXƒL[
-  || secret-key-id: Amazon S3‚Ì”é–§Œ®
-  || default-host: Ú‘±æƒzƒXƒg‚Ì‰Šú’l
+  || access-key-id: Amazon S3ã«ã‚¢ã‚¯ã‚»ã‚¹ã™ã‚‹ãŸã‚ã®ã‚¢ã‚¯ã‚»ã‚¹ã‚­ãƒ¼
+  || secret-key-id: Amazon S3ã®ç§˜å¯†éµ
+  || default-host: æ¥ç¶šå…ˆãƒ›ã‚¹ãƒˆã®åˆæœŸå€¤
   {constructor public {default access-key-id:String, secret-key-id:String, default-host:String}
     set self.access-key-id = access-key-id
     set self.secret-key-id = secret-key-id
@@ -32,9 +32,9 @@
   
   || --------------------------------------------
   || get-bucket-list
-  || ƒoƒPƒbƒg‚Ìˆê——‚ğæ“¾‚·‚é
+  || ãƒã‚±ãƒƒãƒˆã®ä¸€è¦§ã‚’å–å¾—ã™ã‚‹
   || (return)
-  || æ“¾‚µ‚½ƒoƒPƒbƒgˆê——
+  || å–å¾—ã—ãŸãƒã‚±ãƒƒãƒˆä¸€è¦§
   {method public {get-bucket-list}:Buckets
     def verb = HttpRequestMethod.get
     let (signature:String, url:Url) = {self.return-signature-and-url null, "/", verb}
@@ -48,10 +48,10 @@
   
   || --------------------------------------------
   || get-bucket
-  || ƒoƒPƒbƒg“à‚ÌƒIƒuƒWƒFƒNƒgˆê——‚ğæ“¾‚·‚é
+  || ãƒã‚±ãƒƒãƒˆå†…ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆä¸€è¦§ã‚’å–å¾—ã™ã‚‹
   || (param)
-  || bucket: æ“¾æ‚ÌƒoƒPƒbƒg–¼
-  || key: æ“¾‚·‚éÛ‚ÌƒIƒvƒVƒ‡ƒ“@(—áF?acl, ?location)
+  || bucket: å–å¾—å…ˆã®ãƒã‚±ãƒƒãƒˆå
+  || key: å–å¾—ã™ã‚‹éš›ã®ã‚ªãƒ—ã‚·ãƒ§ãƒ³ã€€(ä¾‹ï¼š?acl, ?location)
   {method public {get-bucket bucket:String, key:String = "/"}:{Array-of ObjectInfo}
     def verb = HttpRequestMethod.get
     let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
@@ -65,12 +65,12 @@
   
   || --------------------------------------------
   || get-object
-  || ƒIƒuƒWƒFƒNƒg‚ğæ“¾‚·‚é
+  || ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å–å¾—ã™ã‚‹
   || (param)
-  || bucket: æ“¾æ‚ÌƒoƒPƒbƒg–¼
-  || key: æ“¾‚µ‚½‚¢ƒIƒuƒWƒFƒNƒg–¼
+  || bucket: å–å¾—å…ˆã®ãƒã‚±ãƒƒãƒˆå
+  || key: å–å¾—ã—ãŸã„ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå
   || (return)
-  || æ“¾‚µ‚½ƒIƒuƒWƒFƒNƒg
+  || å–å¾—ã—ãŸã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
   {method public {get-object bucket:String, key:String}:HttpByteInputStream
     
     def verb = HttpRequestMethod.get
@@ -83,10 +83,10 @@
  
   || --------------------------------------------
   || put-bucket
-  || ƒoƒPƒbƒg‚ğV‹Kì¬‚·‚é
+  || ãƒã‚±ãƒƒãƒˆã‚’æ–°è¦ä½œæˆã™ã‚‹
   || (param)
-  || bucket: ì¬‚µ‚½‚¢ƒoƒPƒbƒg–¼
-  || acl: ƒoƒPƒbƒg‚ÌƒAƒNƒZƒXƒRƒ“ƒgƒ[ƒ‹
+  || bucket: ä½œæˆã—ãŸã„ãƒã‚±ãƒƒãƒˆå
+  || acl: ãƒã‚±ãƒƒãƒˆã®ã‚¢ã‚¯ã‚»ã‚¹ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«
   {method public {put-bucket bucket:String, acl:#String = null}:void
     
     def verb = HttpRequestMethod.put
@@ -99,7 +99,7 @@
     {open-http-file url, self.headers, verb}
   }
   
-||--  BucketƒNƒ‰ƒX‚ÉˆÚ“®
+||--  Bucketã‚¯ãƒ©ã‚¹ã«ç§»å‹•
 ||--  || --------------------------------------------
 ||--  || put-object
 ||--  {method public {put-object
@@ -156,9 +156,9 @@
   }
   
   ||---------------------------------------------
-  || amz-headers‚É’l‚ğŠi”[‚·‚é
-  || HttpRequestHeaders‚É‚à“¯—l‚ÉŠi”[‚·‚é
-  || Šù‚ÉKey‚ª‘¶İ‚·‚éê‡AˆÈ‘O‚Ì’l‚Ì––”ö‚ÉƒRƒ“ƒ}‚ÅŒq‚°‚é
+  || amz-headersã«å€¤ã‚’æ ¼ç´ã™ã‚‹
+  || HttpRequestHeadersã«ã‚‚åŒæ§˜ã«æ ¼ç´ã™ã‚‹
+  || æ—¢ã«KeyãŒå­˜åœ¨ã™ã‚‹å ´åˆã€ä»¥å‰ã®å€¤ã®æœ«å°¾ã«ã‚³ãƒ³ãƒã§ç¹‹ã’ã‚‹
   {method package inline {set-amz-headers key:String, value:String}:void
     set self.headers[key]= value
     
@@ -170,7 +170,7 @@
     set self.amz-headers[key] = {key.to-lower-clone} & ":" & value
   }
   
-  || amz-headers‚É‘¶İ‚·‚éƒf[ƒ^‚ğæ‚èo‚·
+  || amz-headersã«å­˜åœ¨ã™ã‚‹ãƒ‡ãƒ¼ã‚¿ã‚’å–ã‚Šå‡ºã™
   {method package {get-all-amz-headers amz-headers:{HashTable-of String, String}}:String
     let ret:StringBuf = {StringBuf}
     {for element:String in amz-headers do
@@ -190,8 +190,8 @@
     {return value}
   }
   
-  || headers ‚É’l‚ğŠi”[‚·‚é
-  || signature ‚Æ RequestURL ‚ğ•Ô‚·
+  || headers ã«å€¤ã‚’æ ¼ç´ã™ã‚‹
+  || signature ã¨ RequestURL ã‚’è¿”ã™
   {method package {return-signature-and-url bucket:#String, key:String, verb:HttpRequestMethod}:(String, Url)
     set self.headers["Date"] = {HttpHeaders.date-time-to-http-header-string {DateTime}}
     def resource =
@@ -234,7 +234,7 @@
   }
   
   || --------------------------------------------
-  || HTTP‚ÌƒŠƒNƒGƒXƒg‚É•K—v‚ÈHttpRequestHeaders
+  || HTTPã®ãƒªã‚¯ã‚¨ã‚¹ãƒˆã«å¿…è¦ãªHttpRequestHeaders
   {method package {get-headers}:HttpRequestHeaders
     {return self.headers}
   }

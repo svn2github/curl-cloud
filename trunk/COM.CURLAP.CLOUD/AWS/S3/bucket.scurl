@@ -1,6 +1,6 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+{curl-file-attributes character-encoding = "utf8"}
 || ----------------------------------------------
-|| ƒoƒPƒbƒgî•ñƒNƒ‰ƒX
+|| ãƒã‚±ãƒƒãƒˆæƒ…å ±ã‚¯ãƒ©ã‚¹
 {define-class public Bucket
   field public-get private-set name:String
   field public-get private-set creation-date:DateTime
@@ -27,9 +27,9 @@
   
   || --------------------------------------------
   || get-bucket
-  || ƒoƒPƒbƒg“à‚ÌƒIƒuƒWƒFƒNƒgˆê——‚ğæ“¾‚·‚é
+  || ãƒã‚±ãƒƒãƒˆå†…ã®ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆä¸€è¦§ã‚’å–å¾—ã™ã‚‹
   || (param)
-  || key: æ“¾‚·‚éÛ‚ÌƒIƒvƒVƒ‡ƒ“@(—áF?acl, ?location)
+  || key: å–å¾—ã™ã‚‹éš›ã®ã‚ªãƒ—ã‚·ãƒ§ãƒ³ã€€(ä¾‹ï¼š?acl, ?location)
   {method public {get-bucket key:String = "/"}:{Array-of ObjectInfo}
     def verb = HttpRequestMethod.get
     let (signature:String, url:Url) = {self.s3.return-signature-and-url self.name, key, verb}
@@ -43,11 +43,11 @@
   
   || --------------------------------------------
   || get-object
-  || ƒIƒuƒWƒFƒNƒg‚ğæ“¾‚·‚é
+  || ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’å–å¾—ã™ã‚‹
   || (param)
-  || key: æ“¾‚µ‚½‚¢ƒIƒuƒWƒFƒNƒg–¼
+  || key: å–å¾—ã—ãŸã„ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå
   || (return)
-  || æ“¾‚µ‚½ƒIƒuƒWƒFƒNƒg
+  || å–å¾—ã—ãŸã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
   {method public {get-object key:String}:HttpByteInputStream
     
     def verb = HttpRequestMethod.get
@@ -60,11 +60,11 @@
   
   || --------------------------------------------
   || put-object-by-url
-  || ƒIƒuƒWƒFƒNƒg‚ğƒAƒbƒvƒ[ƒh‚·‚é
+  || ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹
   || (param)
-  || key: ƒAƒbƒvƒ[ƒh‚·‚éƒIƒuƒWƒFƒNƒg–¼
-  || uri: ƒAƒbƒvƒ[ƒh‚·‚éƒIƒuƒWƒFƒNƒg‚Ìƒ[ƒJƒ‹ƒAƒhƒŒƒX
-  || acl: ACLw’è@(—áFpublic-read)
+  || key: ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå
+  || uri: ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã®ãƒ­ãƒ¼ã‚«ãƒ«ã‚¢ãƒ‰ãƒ¬ã‚¹
+  || acl: ACLæŒ‡å®šã€€(ä¾‹ï¼špublic-read)
   {method public {put-object-by-url
                      key:String,
                      uri:Url,
@@ -93,11 +93,11 @@
   
   || --------------------------------------------
   || put-object-by-bytes
-  || ƒIƒuƒWƒFƒNƒg‚ğƒAƒbƒvƒ[ƒh‚·‚é
+  || ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹
   || (param)
-  || key: ƒAƒbƒvƒ[ƒh‚·‚éƒIƒuƒWƒFƒNƒg–¼
-  || object: ƒAƒbƒvƒ[ƒh‚·‚éƒIƒuƒWƒFƒNƒg
-  || acl: ACLw’è@(—áFpublic-read)
+  || key: ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆå
+  || object: ã‚¢ãƒƒãƒ—ãƒ­ãƒ¼ãƒ‰ã™ã‚‹ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ
+  || acl: ACLæŒ‡å®šã€€(ä¾‹ï¼špublic-read)
   {method public {put-object-by-bytes
                      key:String,
                      object:ByteArray,
@@ -126,7 +126,7 @@
   
   || --------------------------------------------
   || delete-bucket
-  || ƒoƒPƒbƒg‚ğíœ‚·‚é
+  || ãƒã‚±ãƒƒãƒˆã‚’å‰Šé™¤ã™ã‚‹
   {method public {delete-bucket}:void
     
     def verb = HttpRequestMethod.delete
@@ -137,7 +137,7 @@
   }
   
   || --------------------------------------------
-  || ƒtƒ@ƒCƒ‹‚ÉƒIƒuƒWƒFƒNƒg‚ğ‘‚«‚Ş
+  || ãƒ•ã‚¡ã‚¤ãƒ«ã«ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’æ›¸ãè¾¼ã‚€
   {method package {write-file hbis:HttpByteInputStream, uri:Url}:void
     {with-open-streams bos:ByteOutputStream = {write-open-byte uri} do
         {bos.write {{{ByteInputStream-from {Array-of byte}} {hbis.read}}.read}}
@@ -147,7 +147,7 @@
 }
 
 || ----------------------------------------------
-|| ƒoƒPƒbƒgˆê——î•ñ
+|| ãƒã‚±ãƒƒãƒˆä¸€è¦§æƒ…å ±
 {define-class public Buckets
   field public-get private-set owner:Owner
   field public-get private-set buckets:{Array-of Bucket}
