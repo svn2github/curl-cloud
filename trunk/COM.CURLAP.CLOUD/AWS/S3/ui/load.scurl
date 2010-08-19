@@ -3,7 +3,6 @@
 {package COM.CURLAP.CLOUD.AWS.S3.UI,
     {compiler-directives careful? = true}
 }
-{import * from CURL.DATA-ACCESS.BASE}
-{import * from CURL.GUI.BASE}
+{import * from CURL.GUI.STANDARD}
 
 {include "interface.scurl"}

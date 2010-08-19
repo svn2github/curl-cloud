@@ -201,7 +201,7 @@
     || s3 download object operation
   }
   
-  {method private {internal-delete-object key:String}
+  {method private {internal-delete-object key:String}:void
     || s3 delete object operation
   }
   
@@ -905,7 +905,7 @@
         {self.url-remove-flags.append false}
     }
     
-    {construct-super ...}
+    {construct-super {splice ...}}
     
     set self.total-size-frame = {Frame width = 2cm, halign = 1}
     
