@@ -2,6 +2,10 @@
 {curl-file-attributes character-encoding = "utf8"}
 {manifest COM.CURLAP.CLOUD}
 
+{component package COM.CURLAP.CLOUD.AWS.S3.UI,
+    location = "AWS/S3/ui/load.scurl"
+}
+
 {component package COM.CURLAP.CLOUD.AWS.S3,
     location = "AWS/S3/load.scurl"
 }

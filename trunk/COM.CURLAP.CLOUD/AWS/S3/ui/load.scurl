@@ -1,0 +1,9 @@
+{curl 7.0 package}
+{curl-file-attributes character-encoding = "utf8"}
+{package COM.CURLAP.CLOUD.AWS.S3.UI,
+    {compiler-directives careful? = true}
+}
+{import * from CURL.DATA-ACCESS.BASE}
+{import * from CURL.GUI.BASE}
+
+{include "interface.scurl"}
