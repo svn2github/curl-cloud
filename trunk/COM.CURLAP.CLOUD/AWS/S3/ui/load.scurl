@@ -9,9 +9,7 @@
 {import * from CURL.GRAPHICS.WINDOW}
 {import * from CURL.GUI.SHAPES}
 
-{import
-    Bucket, S3Client, ObjectInfo
- from COM.CURLAP.CLOUD.AWS.S3}
+{import * from COM.CURLAP.CLOUD.AWS.S3}
 
 {include "interface.scurl"}
 {include "login.scurl"}

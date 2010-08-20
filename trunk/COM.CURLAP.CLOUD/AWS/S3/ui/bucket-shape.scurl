@@ -12,8 +12,8 @@
 
   {constructor {default name:String, bucket:Bucket, ...}
     {construct-super
-        border-width = 1px,
-        border-color = {FillPattern.get-violet},
+||++    border-width = 1px,
+||++    border-color = {FillPattern.get-violet},
         {splice ...}}
     
     set self._name = name
@@ -27,7 +27,6 @@
         }
     let txt:TextFlowBox = 
         {TextFlowBox
-||--            width = 2.7cm,
             horigin = "center",
             vorigin = "center",
             name,

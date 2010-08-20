@@ -6,10 +6,11 @@
   field private _click-position-x:Distance = 0m
   field private _click-position-y:Distance = 0m
   field private _moving?:bool = false
-  field private _moving-child:#Graphic
+  field private _selected-child:#Graphic
   field private _animate-timer:Timer
   field private _animate-mode:int = -1
   field private _animate-up:bool = true
+  field private _disp-bucket-space:bool = false
   
   field private _canvas:Canvas
   field private _s3client:S3Client
@@ -18,6 +19,8 @@
   
   field private _context-normal:EventHandler
   field private _context-back:EventHandler
+  field private _context-remove:EventHandler
+  field private _context-current:#EventHandler = null
   
   let private CloudImage01-path:Path = {Path}
   let private CloudImage02-path:Path = {Path}
@@ -54,14 +57,34 @@
     || Viewの移動処理
     let pm:EventHandler =
         {on e:PointerMotion at v:View do
-            {if-non-null self._moving-child then
+            {if-non-null self._selected-child then
                 || Bucketの移動
-                {self._canvas.shift-xy
-                    self._moving-child,
-                    e.x - self._click-position-x,
-                    e.y - self._click-position-y}
-                set self._click-position-x = e.x
-                set self._click-position-y = e.y
+                def bucket-shape = self._selected-child asa BucketShape
+                def (bs-x, bs-y) =
+                    {bucket-shape.xy-offset-to self._canvas}
+                def new-xx = bs-x + e.x - self._click-position-x
+                def new-yy = bs-y + e.y - self._click-position-y
+                
+                let gr:GRect = {bucket-shape.get-bounds}
+                {if {self.check-bucket-pos
+                        new-xx, new-yy,
+                        gr.lextent + gr.rextent,
+                        gr.ascent + gr.descent} then
+                    {self._canvas.move-to-xy
+                        self._selected-child,
+                        new-xx,
+                        new-yy}
+                    set self._click-position-x = e.x
+                    set self._click-position-y = e.y
+                 else
+                    {try
+                        {v.remove-event-handler pm}
+                        set self._moving? = false
+                        set self._selected-child = null
+                     catch e:Error do
+                        {dump e}
+                    }
+                }
              else
                 || 雲の移動
                 let (x:Distance, y:Distance) = {v.get-window-position}
@@ -84,17 +107,28 @@
                         }
                     }
                  elseif not self._moving? then
-                    set self._moving-child = {self._canvas.graphical-child-visible-at e.x, e.y}
-                    {if not self._moving-child isa BucketShape then
-                        set self._moving-child = null
+                    set self._selected-child = {self._canvas.graphical-child-visible-at e.x, e.y}
+                    {if not self._selected-child isa BucketShape then
+                        set self._selected-child = null
                     }
-                    {if-non-null self._moving-child then
-                        {self._canvas.set-child-index self._moving-child, self._canvas.child-array.size - 1}
+                    {if-non-null self._selected-child then
+                        {self._canvas.set-child-index self._selected-child, self._canvas.child-array.size - 1}
                     }
                     set self._click-position-x = e.x
                     set self._click-position-y = e.y
                     {v.add-event-handler pm}
                     set self._moving? = true
+                }
+             elseif e.button == 3 then
+                {if not self._disp-bucket-space then
+                    def child = {self._canvas.graphical-child-visible-at e.x, e.y}
+                    {if-non-null child then
+                        {if child isa BucketShape then
+                            {self.set-context-remove}
+                        }
+                     else
+                        {self.set-context-normal}
+                    }
                 }
             }
         }
@@ -107,7 +141,7 @@
                     {try
                         {v.remove-event-handler pm}
                         set self._moving? = false
-                        set self._moving-child = null
+                        set self._selected-child = null
                      catch e:Error do
                         {dump e}
                     }
@@ -165,6 +199,26 @@
                             def ret = {popup-question "Back?"}
                             {if ret == Dialog.yes then
                                 {self.return-bucket-space}
+                            }
+                        }
+                    }
+                }
+        }
+    
+    set self._context-remove =
+        {context-popup
+            menu-pane = 
+                {MenuPane
+                    {MenuAction label = "Remove",
+                        {on Action do
+                            def ret = {popup-question "Remove?"}
+                            {if ret == Dialog.yes then
+                                || Bucketの削除
+                                def bucket-shape = self._selected-child asa BucketShape
+                                {bucket-shape.detach}
+                                {self._buckets.remove bucket-shape.bucket-name}
+                                || TODO: Bucketの削除処理（bucket-shape.bucket）
+                                {output "Bucket 削除 [" & bucket-shape.bucket-name & "]"}
                             }
                         }
                     }
@@ -244,28 +298,61 @@
     {self.refresh-buckets}
     set self._animate-timer.repeat = -1
   }
-  
-  {method private {refresh-buckets}:void
+
+{method private {refresh-buckets}:void
     || @@@ Bucketの自動配置
-  }
-  
-  {method package {set-context-normal}:void
+}
+
+{method private {check-bucket-pos xx:Distance, yy:Distance, ww:Distance, hh:Distance}:bool
+    
+    let cloud-xx:Distance = {any-to-Distance 138px}
+    let cloud-yy:Distance = {any-to-Distance  92px}
+    let cloud-ww:Distance = {any-to-Distance 714px}
+    let cloud-hh:Distance = {any-to-Distance 358px}
+    
+    {if xx < cloud-xx or
+        yy < cloud-yy or
+        xx + ww > cloud-xx + cloud-ww or
+        yy + hh > cloud-yy + cloud-hh then
+        {return false}
+    }
+    
+    {return true}
+}
+
+{method package {set-context-normal}:void
+    {if-non-null self._context-current then
+        {self.remove-event-handler {non-null self._context-current}}
+    }
     {self.add-event-handler self._context-normal}
-  }
-  
-  {method package {remove-context-normal}:void
-    {self.remove-event-handler self._context-normal}
-  }
-  
-  {method package {set-context-back}:void
+    set self._context-current = self._context-normal
+}
+
+{method package {remove-context-menu}:void
+    {if-non-null self._context-current then
+        {self.remove-event-handler {non-null self._context-current}}
+    }
+    set self._context-current = null
+}
+
+{method package {set-context-back}:void
+    {if-non-null self._context-current then
+        {self.remove-event-handler {non-null self._context-current}}
+    }
     {self.add-event-handler self._context-back}
-  }
-  
-  {method package {remove-context-back}:void
-    {self.remove-event-handler self._context-back}
-  }
-  
-  {method private {disp-bucket-space backet:BucketShape}:void
+    set self._context-current = self._context-back
+}
+
+{method package {set-context-remove}:void
+    {if-non-null self._context-current then
+        {self.remove-event-handler {non-null self._context-current}}
+    }
+    {self.add-event-handler self._context-remove}
+    set self._context-current = self._context-remove
+}
+
+
+{method private {disp-bucket-space backet:BucketShape}:void
     set self._backet-space = {BucketSpace
                                  self,
                                  backet,
@@ -281,11 +368,11 @@
     }
 ||++{self.request-draw}
     
-    {self.remove-context-normal}
     {self.set-context-back}
-  }
-  
-  {method package {return-bucket-space}:void
+    set self._disp-bucket-space = true
+}
+
+{method package {return-bucket-space}:void
     
     {self._backet-space.detach}
     set self._backet-space = null
@@ -299,16 +386,16 @@
     }
 ||++{self.request-draw}
     
-    {self.remove-context-back}
     {self.set-context-normal}
-  }
-  
-  
-  ||  ------------------------------------------------------------
-  ||  ------------------------------------------------------------
-  ||  ------------------------------------------------------------
-  
-  {method private {initialize}:void
+    set self._disp-bucket-space = false
+}
+
+
+||  ------------------------------------------------------------
+||  ------------------------------------------------------------
+||  ------------------------------------------------------------
+
+{method private {initialize}:void
     
     {if CloudDialog.CloudImage01-path.empty? then
         {CloudDialog.CloudImage01-path.move-to
@@ -682,6 +769,6 @@
             {Distance2d {any-to-Distance -88px}, {any-to-Distance -33.15626px}}}
     }
     
-  }
-  
+}
+
 }
