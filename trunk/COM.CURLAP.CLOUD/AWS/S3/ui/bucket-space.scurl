@@ -4,18 +4,17 @@
 {define-class public final BucketSpace {inherits Frame}
 
   field private _cloud:CloudDialog
-  field private _backet:BucketShape
+  field private _bucket-shape:BucketShape
 
-  {constructor {default cloud:CloudDialog, backet:BucketShape, ...}
+  {constructor {default cloud:CloudDialog, bucket-shape:BucketShape, ...}
     {construct-super
-||++    border-width = 1px,
-||++    border-color = {FillPattern.get-orange},
         background = {FillPattern.from-url {url "./Image/BucketSpace.png"}},
         {splice ...}}
 
     set self._cloud = cloud
-    set self._backet = backet
+    set self._bucket-shape = bucket-shape
     
+    || TODO: bucket-shapeよりBucketを取り出し、BucketModelを生成する。
     let bucket:Bucket = {Bucket}
     let bucket-model:BucketModel = {BucketModel.default bucket}
     let vb:VBox =
@@ -33,7 +32,7 @@
                     vorigin = "center",
                     font-family = "ＭＳ Ｐゴシック",
                     font-size = 24pt,
-                    self._backet.bucket-name,
+                    self._bucket-shape.bucket-name,
                     color = FillPattern.white
                 }
             },

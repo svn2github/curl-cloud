@@ -11,8 +11,7 @@
   field private _animate-mode:int = -1
   field private _animate-up:bool = true
   field private _canvas:Canvas
-  field private _buckets:{HashTable-of String, String} = {{HashTable-of String, String}}
-||--  field private _buckets:{HashTable-of String, Bucket} = {{HashTable-of String, Bucket}}    || @@@
+  field private _buckets:{HashTable-of String, BucketShape} = {{HashTable-of String, BucketShape}}
   field private _backet-space:#BucketSpace = null
   
   field private _context-normal:EventHandler
@@ -24,24 +23,12 @@
   let private CloudImage90-path:Path = {Path}
   let private CloudImage-path:Path = {Path}
   
-  {constructor {default login:LoginDialog, ...}
+  {constructor {default login:LoginDialog, ...}     || S3Client引数を追加する
     {construct-super
         decorations? = false,
         width = 974px,
         height = 552px,
         background = "#E0DFE3",
-||--        hstretch? = true,
-||--        vstretch? = true,
-||--        {context-popup
-||--            menu-pane = 
-||--                {MenuPane
-||--                    {MenuAction label = "Close",
-||--                        {on Action do
-||--                            {self.close}
-||--                        }
-||--                    }
-||--                }
-||--        },
         {splice ...}}
     
     set self.title = "Amazon S3 "
@@ -65,6 +52,7 @@
     let pm:EventHandler =
         {on e:PointerMotion at v:View do
             {if-non-null self._moving-child then
+                || Bucketの移動
                 {self._canvas.shift-xy
                     self._moving-child,
                     e.x - self._click-position-x,
@@ -72,6 +60,7 @@
                 set self._click-position-x = e.x
                 set self._click-position-y = e.y
              else
+                || 雲の移動
                 let (x:Distance, y:Distance) = {v.get-window-position}
                 {v.set-window-position
                     e.x + x - self._click-position-x,
@@ -83,6 +72,7 @@
         {on e:PointerPress at v:View do
             {if e.button == 1 then
                 {if e.click-count == 2 then
+                    || Bucket内容の表示
                     {output "Double Click"}
                     def child = {self._canvas.graphical-child-visible-at e.x, e.y}
                     {if-non-null child then
@@ -130,7 +120,7 @@
                 {MenuPane
                     {MenuAction label = "Add Bucket",
                         {on Action do
-                            || TODO: バケットの追加
+                            || Bucketの追加
                             let bucket-name:#String =
                                 {popup-text-query
                                     title = "Add Bucket",
@@ -140,9 +130,11 @@
                                     def msg = {popup-message bucket-name & " is already registered."}
                                  else
                                     || TODO: バケットを追加して、その結果をself._bucketsに設定する
-                                    def bs = {BucketShape bucket-name}
+                                    || BucketShape生成時の{Bucket}は暫定処理
+                                    || キャンバスへの座標指定は、暫定　（refresh-bucketsメソッドで行う予定）
+                                    def bs = {BucketShape bucket-name, {Bucket}}
                                     {self._canvas.add bs, x = 250px, y = 200px}
-                                    {self._buckets.set bucket-name, bucket-name}
+                                    {self._buckets.set bucket-name, bs}
                                     {self.refresh-buckets}
                                 }
                             }
@@ -233,6 +225,10 @@
     {self.set-window-shape
         {Region.from-path CloudDialog.CloudImage-path}
     }
+    
+    || TODO: Bucket配列を取得し、self._bucketsに設定する
+    
+    {self.refresh-buckets}
   }
   
 ||--  {method public {draw r2d:Renderer2d}:void
@@ -247,7 +243,7 @@
   }
   
   {method private {refresh-buckets}:void
-    
+    || @@@ Bucketの自動配置
   }
   
   {method package {set-context-normal}:void

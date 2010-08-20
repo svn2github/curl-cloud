@@ -8,14 +8,16 @@
   field private _moving?:bool = false
   
   field private _name:String = ""
+  field private _bucket:Bucket
 
-  {constructor {default name:String, ...}
+  {constructor {default name:String, bucket:Bucket, ...}
     {construct-super
         border-width = 1px,
         border-color = {FillPattern.get-violet},
         {splice ...}}
-
+    
     set self._name = name
+    set self._bucket = bucket
     
     let is:ImageShape =
         {ImageShape
