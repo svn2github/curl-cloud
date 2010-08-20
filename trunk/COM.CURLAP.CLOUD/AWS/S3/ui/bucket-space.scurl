@@ -8,8 +8,8 @@
 
   {constructor {default cloud:CloudDialog, backet:BucketShape, ...}
     {construct-super
-        border-width = 1px,
-        border-color = {FillPattern.get-orange},
+||++    border-width = 1px,
+||++    border-color = {FillPattern.get-orange},
         background = {FillPattern.from-url {url "./Image/BucketSpace.png"}},
         {splice ...}}
 
@@ -23,12 +23,12 @@
             horigin = "left",
             vorigin = "top",
             hstretch? = true,
-            margin = 8px,
+            margin = 12px,
             {HBox
-                height = 70px,
+                height = 78px,
                 {TextFlowBox
-                    border-width = 1px,
-                    border-color = {FillPattern.get-pink},
+||++                border-width = 1px,
+||++                border-color = {FillPattern.get-pink},
                     horigin = "center",
                     vorigin = "center",
                     font-family = "ＭＳ Ｐゴシック",
@@ -38,7 +38,7 @@
                 }
             },
             {BucketBrowser
-                height = 290px,
+                height = 340px,
                 bucket-model = bucket-model
             }
         }

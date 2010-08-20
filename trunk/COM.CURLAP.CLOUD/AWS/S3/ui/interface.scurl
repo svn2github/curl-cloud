@@ -612,7 +612,7 @@
         {new {Array-of RecordGridColumn},
             {RecordGridColumn
                 "key",
-                width = 6cm,
+                width = 10.2cm,
                 cell-spec = IconLabelCell
             },
             {RecordGridColumn
