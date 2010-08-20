@@ -10,6 +10,7 @@
 {define-class public final LoginDialog {inherits View}
   field private _AccessKey:String
   field private _SecretKey:String
+  field private _s3client:#S3Client
 
   let private persistent-key:String = "Amazon S3"
   let private pd-AccessKey:String = "AccessKey"
@@ -63,24 +64,28 @@
             {on Action at b:CommandButton do
                 || TODO: Amazon S3へのログインを行う。　失敗したら、ダイアログ表示
                 || tf-Access.valueとpf-Secret.valueの値で、ログインを行う。　(S3Client)
+                set self._s3client = {S3Client tf-Access.value, pf-Secret.value}
                 
                 || Amazon S3へのログイン成功時
                 || TODO: Amazon S3へのアクセス情報の引数を追加する
-                let cloud:CloudDialog = {CloudDialog
-                                            self  || TODO:  , s3-client
-                                        }
-                {cloud.show-dialog}
-                {self.hide}
-                
-                set self._AccessKey = tf-Access.value
-                set self._SecretKey = pf-Secret.value
-                {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
-                {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
-                {set-persistent-data LoginDialog.persistent-key, pd}
-                {commit-persistent-data}
-                {output "AccessKey: [" & self._AccessKey & "]"}
-                {output "SecretKey: [" & self._SecretKey & "]"}
-            }}
+                {if-non-null self._s3client then
+                    let cloud:CloudDialog = {CloudDialog
+                                                self, {non-null self._s3client}
+                                            }
+                    {cloud.show-dialog}
+                    {self.hide}
+                    
+                    set self._AccessKey = tf-Access.value
+                    set self._SecretKey = pf-Secret.value
+                    {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
+                    {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
+                    {set-persistent-data LoginDialog.persistent-key, pd}
+                    {commit-persistent-data}
+                    {output "AccessKey: [" & self._AccessKey & "]"}
+                    {output "SecretKey: [" & self._SecretKey & "]"}
+                }
+            }
+        }
     
     let cb-Cancel:CommandButton =
         {CommandButton

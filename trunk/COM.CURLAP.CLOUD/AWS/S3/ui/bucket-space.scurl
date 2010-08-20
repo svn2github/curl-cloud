@@ -15,7 +15,7 @@
     set self._bucket-shape = bucket-shape
     
     || TODO: bucket-shapeよりBucketを取り出し、BucketModelを生成する。
-    let bucket:Bucket = {Bucket}
+    let bucket:Bucket = self._bucket-shape.bucket
     let bucket-model:BucketModel = {BucketModel.default bucket}
     let vb:VBox =
         {VBox

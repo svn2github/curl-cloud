@@ -10,7 +10,7 @@
 {import * from CURL.XML.SAX.BASE}
 {import * from CURL.XML.SAX.PARSER}
 {import * from COM.CURLAP.CLOUD.AWS.S3.UTIL}
-{import * from COM.CURLAP.CLOUD.AWS.S3.UI}
+||--{import * from COM.CURLAP.CLOUD.AWS.S3.UI}
 
 {include "bucket.scurl"}
 {include "http-request-data.scurl"}

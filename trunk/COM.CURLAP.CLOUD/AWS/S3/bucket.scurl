@@ -6,7 +6,7 @@
   field public-get private-set creation-date:DateTime
   field private s3:S3Client
   
-  {constructor package {default
+  {constructor public {default
                            name:String,
                            creation-date:DateTime,
                            s3:S3Client

@@ -43,5 +43,9 @@
   {getter public {bucket-name}:String
     {return self._name}
   }
+  
+  {getter public {bucket}:Bucket
+    {return self._bucket}
+  }
 }
  

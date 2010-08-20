@@ -10,7 +10,9 @@
   field private _animate-timer:Timer
   field private _animate-mode:int = -1
   field private _animate-up:bool = true
+  
   field private _canvas:Canvas
+  field private _s3client:S3Client
   field private _buckets:{HashTable-of String, BucketShape} = {{HashTable-of String, BucketShape}}
   field private _backet-space:#BucketSpace = null
   
@@ -23,7 +25,7 @@
   let private CloudImage90-path:Path = {Path}
   let private CloudImage-path:Path = {Path}
   
-  {constructor {default login:LoginDialog, ...}     || S3Client引数を追加する
+  {constructor {default login:LoginDialog, s3client:S3Client, ...}
     {construct-super
         decorations? = false,
         width = 974px,
@@ -32,6 +34,7 @@
         {splice ...}}
     
     set self.title = "Amazon S3 "
+    set self._s3client = s3client
     
     {self.set-icon
         {Pixmap.from-url  {url "./Image/S3Icon.png"}},
@@ -132,7 +135,7 @@
                                     || TODO: バケットを追加して、その結果をself._bucketsに設定する
                                     || BucketShape生成時の{Bucket}は暫定処理
                                     || キャンバスへの座標指定は、暫定　（refresh-bucketsメソッドで行う予定）
-                                    def bs = {BucketShape bucket-name, {Bucket}}
+                                    def bs = {BucketShape bucket-name, {Bucket bucket-name, {DateTime}, self._s3client}}
                                     {self._canvas.add bs, x = 250px, y = 200px}
                                     {self._buckets.set bucket-name, bs}
                                     {self.refresh-buckets}

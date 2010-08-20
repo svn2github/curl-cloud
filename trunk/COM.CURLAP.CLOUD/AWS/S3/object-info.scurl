@@ -9,7 +9,7 @@
   field public-get private-set storage-class:String
   field public-get private-set owner:#Owner
   
-  {constructor package {default
+  {constructor public {default
                           key:String,
                           last-modified:DateTime,
                           etag:String,

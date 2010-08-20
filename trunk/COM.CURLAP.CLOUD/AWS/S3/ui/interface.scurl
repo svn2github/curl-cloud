@@ -3,44 +3,44 @@
 || ======== S3 Base Data Classes ========
 || TODO: remove these, link with actual data classes
 
-|| bucket
-{define-class package Bucket
-  field public-get private-set name:String = "Test Bucket"
-  field public-get private-set creation-date:DateTime = {DateTime}
-}
+||--|| bucket
+||--{define-class package Bucket
+||--  field public-get private-set name:String = "Test Bucket"
+||--  field public-get private-set creation-date:DateTime = {DateTime}
+||--}
 
-|| object
-{define-class package ObjectInfo
-  field public-get private-set key:String = ""
-  field public-get private-set last-modified:DateTime = {DateTime}
-  field public-get private-set etag:String = ""
-  field public-get private-set size:int = 0
-  field public-get private-set storage-class:String = ""
-  field public-get private-set owner:#Owner
-  
-  {constructor package {default
-                          key:String,
-                          last-modified:DateTime,
-                          etag:String,
-                          size:int,
-                          storage-class:String,
-                          owner:#Owner
-                      }
-    set self.key = key
-    set self.last-modified = last-modified
-    set self.etag = etag
-    set self.size = size
-    set self.storage-class = storage-class
-    set self.owner = owner
-  }
-  
-}
+||--|| object
+||--{define-class package ObjectInfo
+||--  field public-get private-set key:String = ""
+||--  field public-get private-set last-modified:DateTime = {DateTime}
+||--  field public-get private-set etag:String = ""
+||--  field public-get private-set size:int = 0
+||--  field public-get private-set storage-class:String = ""
+||--  field public-get private-set owner:#Owner
+||--  
+||--  {constructor package {default
+||--                          key:String,
+||--                          last-modified:DateTime,
+||--                          etag:String,
+||--                          size:int,
+||--                          storage-class:String,
+||--                          owner:#Owner
+||--                      }
+||--    set self.key = key
+||--    set self.last-modified = last-modified
+||--    set self.etag = etag
+||--    set self.size = size
+||--    set self.storage-class = storage-class
+||--    set self.owner = owner
+||--  }
+||--  
+||--}
 
-|| owner
-{define-class package Owner
-  field public-get private-set id:String = ""
-  field public-get private-set display-name:String = ""  
-}
+||--|| owner
+||--{define-class package Owner
+||--  field public-get private-set id:String = ""
+||--  field public-get private-set display-name:String = ""  
+||--}
 
 || ======== Browser Model ========
 
