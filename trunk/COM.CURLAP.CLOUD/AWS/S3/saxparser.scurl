@@ -1,11 +1,28 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+||| Copyright (C) 1998-2010, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @authors Mana Seino
+|||
+{curl-file-attributes character-encoding = "utf8"}
 
 {define-class package ObjectParser {inherits DefaultHandler}
   
   field private list-objects:{Array-of ObjectInfo}
   field package-get private-set objects:ObjectsInfo
   field package-get private-set args-stack:{Array-of Arguments}
-  field private common-prefixes:{Array-of String} 
+  ||field private common-prefixes:{Array-of String} 
   field private sbuf:StringBuf
   field private flag:bool = false
   
@@ -14,7 +31,7 @@
     set self.list-objects = {new {Array-of ObjectInfo}}
     set self.objects = {uninitialized-value-for-type ObjectsInfo}
     set self.args-stack = {new {Array-of Arguments}, {Arguments}}
-    set self.common-prefixes = {new {Array-of String}}
+    ||set self.common-prefixes = {new {Array-of String}}
     set self.sbuf = {StringBuf}
   }
   
@@ -33,7 +50,7 @@
     {switch name
      case "ListBucketResult" do
         {self.current-stack.clear}
-     case"Contents" do
+     case "Contents" do
         {self.args-stack.append {Arguments}}
      case "Owner" do
         {self.args-stack.append {Arguments}}
@@ -50,11 +67,11 @@
     {switch name
      case "ListBucketResult" do
         def objects-args = {self.args-stack.pop}
-        set self.objects = {ObjectsInfo.from-xml object-info = self.list-objects, common-prefixes = self.common-prefixes}
+        set self.objects = {ObjectsInfo.from-xml object-info = self.list-objects, {splice objects-args}}
      case"Contents" do
         def contents-args = {self.args-stack.pop}
         {self.list-objects.append
-            {ObjectInfo.from-xml {splice contents-args}}
+            {FileInfo.from-xml {splice contents-args}}
         }
      case "Owner" do
         def owner-args = {self.args-stack.pop}
@@ -66,7 +83,15 @@
         set self.flag = false
      case "Prefix" do
         {if self.flag then
-            {self.common-prefixes.append {self.sbuf.to-String}}
+||++        {self.common-prefixes.append {self.sbuf.to-String}}
+            {self.list-objects.append
+                {DirectoryInfo.from-xml key = {self.sbuf.to-String}}
+            }
+         else
+            {self.current-stack.append
+                {self.sbuf.to-String},
+                keyword = {name.to-lower-clone}
+            }            
         }
         {self.sbuf.clear}        
      else

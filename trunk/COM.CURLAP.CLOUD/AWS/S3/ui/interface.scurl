@@ -1,5 +1,4 @@
 ﻿{curl-file-attributes character-encoding = "utf8"}
-
 || ======== Browser Model ========
 
 || The RecordFields needed for a bucket set.
@@ -14,27 +13,32 @@
         {RecordField
             "last-modified",
             caption = {hlmessage Date Modified},
-            domain = DateTime
+            domain = DateTime,
+            nullable? = true
         },
         {RecordField
             "etag",
             caption = {hlmessage etag},
-            domain = String
+            domain = String,
+            nullable? = true
         },
         {RecordField
             "size",
             caption = {hlmessage Size},
-            domain = int
+            domain = int,
+            nullable? = true
         },
         {RecordField
             "storage-class",
             caption = {hlmessage Storage Class},
-            domain = String
+            domain = String,
+            nullable? = true
         },
         {RecordField
             "owner",
             caption = {hlmessage Owner},
             domain = any,
+            nullable? = true,
             nullable? = true
         },
         || TODO: how do we get this information? Also what Domain to use?
@@ -59,6 +63,9 @@
             bucket-set-fields,
             modifiable? = true
         }
+    {for o:ObjectInfo in {self.bucket.get-bucket}.object-info do
+        {self.add-object-info o}
+    }
   }
   
   {getter public open {valid?}:bool
@@ -109,13 +116,19 @@
   {method package {add-object-info i:ObjectInfo}:void
     def new-record = {self.record-set.new-record}
     {new-record.set "key", i.key}
-    {new-record.set "last-modified", i.last-modified}
-    {new-record.set "etag", i.etag}
-    {new-record.set "size", i.size}
-    {new-record.set "storage-class", i.storage-class}
-    {new-record.set "owner", i.owner}
-    || TODO: somehow set type -- what's the interface?
-    {new-record.set "type", "File?"}    
+    {type-switch i
+     case f:FileInfo do
+        {new-record.set "last-modified", f.last-modified}
+        {new-record.set "etag", f.etag}
+        {new-record.set "size", f.size}
+        {new-record.set "storage-class", f.storage-class}
+        {new-record.set "owner", f.owner}
+        || TODO: somehow set type -- what's the interface?
+        {new-record.set "type", "file"}
+     case d:DirectoryInfo do
+        || TODO: somehow set type -- what's the interface?
+        {new-record.set "type", "directory"}
+    }
     {self.record-set.append new-record}
   }
   
@@ -130,6 +143,12 @@
   
   {method public open {add-folder key:String}:void
     || s3 add folder operation
+    {try
+        {self.bucket.put-directory key}
+        {self.add-object-info {{self.bucket.get-directory key}.get-first-object-info}}
+     catch ex:Exception do
+        {popup-message ex.message}
+    }
   }
   
   {method public open {add-object-from-url object-url:Url}:void
@@ -138,16 +157,14 @@
     {type-switch {object-url.resolve}
      case f:LocalFile do
         {if-non-null info = {f.info} then
-            {self.add-object-info
-                {ObjectInfo
-                    object-url.filename,
-                    info.modified,
-                    "etag",
-                    info.size asa int,
-                    "class",
-                    null
+            {try
+                {self.bucket.put-object-by-url object-url.filename, object-url}
+                {self.add-object-info
+                    {{self.bucket.get-directory object-url.filename}.get-first-object-info}
                 }
-            }            
+             catch ex:Exception do
+                {popup-message ex.message}
+            }
         }
     }
   }
@@ -157,10 +174,17 @@
                           dir:LocalDirectory
                       }:void
     || s3 download object operation
+    {self.bucket.write-file {self.bucket.get-object key}, {dir.url.concat key}}
+    
   }
   
   {method private {internal-delete-object key:String}:void
     || s3 delete object operation
+    {try
+        {self.bucket.delete-object key}
+     catch ex:Exception do
+        {popup-message ex.message}
+    }
   }
   
 }
@@ -799,15 +823,18 @@
         }
         def download-directory =
             {choose-directory title = {hlmessage Choose Download Directory}}
-        {type-switch download-directory
-         case local-directory:LocalDirectory do
-            set ldir = local-directory
-        }
-        {if-non-null ldir then
-            || TODO: is there any way to make this operation atomic?
-            {for k in {self.get-selected-keys} do
-                {self.bucket-model.download-object k, ldir}
+        {if-non-null download-directory then
+            {type-switch {download-directory.resolve}
+             case local-directory:LocalDirectory do
+                set ldir = local-directory
             }
+            {if-non-null ldir then
+                || TODO: is there any way to make this operation atomic?
+                {for k in {self.get-selected-keys} do
+                    {self.bucket-model.download-object k, ldir}
+                }
+            }
+            
         }
     }
   }

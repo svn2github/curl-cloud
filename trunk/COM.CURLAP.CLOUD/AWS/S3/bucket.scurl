@@ -31,10 +31,11 @@
     
     def verb = HttpRequestMethod.delete
     let uri:Url = {self.s3.return-signature-and-url self.name, "", verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try 
         set reply = {open-http-file uri, {self.s3.get-headers}, verb}
+        
      catch ex:Exception do
         {throw ex}
      finally
@@ -48,7 +49,7 @@
   {method public {delete-object key:String}:void
     def verb = HttpRequestMethod.delete
     let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file url, {self.s3.get-headers}, verb}
@@ -62,15 +63,13 @@
   
   || --------------------------------------------
   || Get list object in bucket
-  || (param)
-  || option: option (e.g. "?acl", "?location")
   || (return)
   || Object list
-  {method public {get-bucket option:String = ""}:ObjectsInfo
+  {method public {get-bucket key:String = ""}:ObjectsInfo
     def verb = HttpRequestMethod.get
-    let url:Url = {self.s3.return-signature-and-url self.name, option, verb}
-    set url = {url.set-query "?prefix=&delimiter=/"}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let reply:#HttpByteInputStream
+    set url = {url.set-query "?prefix=" & key & "&delimiter=/"}
     
     {try
         set reply = {open-http-file url, {self.s3.get-headers}, verb}
@@ -84,12 +83,16 @@
   }
   
   || --------------------------------------------
-  || Get folder
-  {method public {get-dir key:String}:ObjectsInfo
+  || Get directory
+  || (param)
+  || key: directory name
+  || (return)
+  || Object list
+  {method public {get-directory key:String}:ObjectsInfo
     def verb = HttpRequestMethod.get
     let url:Url = {self.s3.return-signature-and-url self.name, "", verb}
     set url = {url.set-query  "?prefix=" & key & "&delimiter=/"}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file url, {self.s3.get-headers}, verb}
@@ -112,15 +115,15 @@
     
     def verb = HttpRequestMethod.get
     let uri:Url = {self.s3.return-signature-and-url self.name, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file uri, {self.s3.get-headers}, verb}
-        {return reply}
+        {return {non-null reply}}
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+||++    {reply.close}
         {self.s3.initialize-headers}
     }
   }
@@ -130,7 +133,7 @@
   || (param)
   || key: folder name
   || acl: ACLÅ@(e.g. "public-read")
-  {method public {put-dir
+  {method public {put-directory
                      key:String,
                      acl:#String = null
                  }:void
@@ -142,7 +145,7 @@
     }
     set key = key & "/"
     let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file url, {self.s3.get-headers}, verb}
@@ -177,7 +180,7 @@
     }
     
     let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file
@@ -217,7 +220,7 @@
     }
     
     let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         def data = {open-byte-file uri}
@@ -237,10 +240,14 @@
   
   || --------------------------------------------
   || Write object to file
-  {method package {write-file hbis:HttpByteInputStream, uri:Url}:void
-    {with-open-streams bos:ByteOutputStream = {write-open-byte uri} do
-        {bos.write {{{ByteInputStream-from {Array-of byte}} {hbis.read}}.read}}
-        {bos.flush}
+  {method public {write-file hbis:HttpByteInputStream, uri:Url}:void
+    {try
+        {with-open-streams bos:ByteOutputStream = {write-open-byte uri} do
+            {bos.write {{{ByteInputStream-from {Array-of byte}} {hbis.read}}.read}}
+            {bos.flush}
+        }
+     catch ex:Exception do
+        {throw ex}
     }
   }
 }
@@ -276,4 +283,16 @@
     }
     {return ret}
   }
+  
+  {method public {get-if-exist name:String}:(Bucket, bool)
+    let bucket:Bucket = {uninitialized-value-for-type Bucket}
+    {for b:Bucket in self.buckets do
+        {if b.name == name then
+            set bucket = b
+            {return bucket, true}
+        }
+    }
+    {return bucket, false}
+  }  
+  
 }

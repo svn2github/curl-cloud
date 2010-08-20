@@ -1,13 +1,48 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+||| Copyright (C) 1998-2010, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @authors Mana Seino
+|||
+
+{curl-file-attributes character-encoding = "utf8"}
 || ----------------------------------------------
 || Object info
-{define-class public ObjectInfo
+{define-class public abstract ObjectInfo
   field public-get private-set key:String
+  
+  {constructor public {default
+                           key:String
+                       }
+    set self.key = key
+  }
+  
+  {method public {key-exist? key:String}:bool
+    {if {self.key.find-string key} >= 0 then
+        {return true}
+     else
+        {return false}
+    }
+  }
+}
+
+{define-class public FileInfo {inherits ObjectInfo}
   field public-get private-set last-modified:DateTime
   field public-get private-set etag:String
   field public-get private-set size:int
   field public-get private-set storage-class:String
-  field public-get private-set owner:#Owner
+  field public-get private-set owner:Owner
   
   {constructor public {default
                           key:String,
@@ -15,9 +50,9 @@
                           etag:String,
                           size:int,
                           storage-class:String,
-                          owner:#Owner
+                          owner:Owner
                       }
-    set self.key = key
+    {construct-super key}
     set self.last-modified = last-modified
     set self.etag = etag
     set self.size = size
@@ -26,46 +61,110 @@
   }
   
   {factory package {from-xml
-                      key:String = "",
-                      lastmodified:String = "",
-                      etag:String = "",
-                      size:String = "",
-                      storage-class:String = "",
-                      owner:#Owner = null,
-                      ...
-                  }:ObjectInfo
-    {return {ObjectInfo
+                       key:String = "",
+                       lastmodified:String = "",
+                       etag:String = "",
+                       size:String = "",
+                       storageclass:String = "",
+                       owner:Owner = {Owner "", ""},
+                       ...
+                   }:FileInfo
+    {return {FileInfo
                 key,
                 {DateTime lastmodified},
                 etag,
                 {size.to-int},
-                storage-class,
+                storageclass,
                 owner
             }
     }
   }
+}
+
+{define-class public DirectoryInfo {inherits ObjectInfo}
   
-  {method public {key-exist? key:String}:bool
-    {if {self.key.find-string key} >= 0 then
-        {return true}
-     else
-        {return false}
-        
+  {constructor public {default
+                          key:String
+                      }
+    {construct-super key}
+  }
+  
+  {factory package {from-xml
+                       key:String = "",
+                       ...
+                   }:DirectoryInfo
+    {return {DirectoryInfo
+                key
+            }
     }
   }
 }
 
 {define-class public ObjectsInfo
   field public-get private-set object-info:{Array-of ObjectInfo}
-  field public-get private-set common-prefixes:{Array-of String}
+  field public-get private-set name:String
+  field public-get private-set prefix:String
+  field public-get private-set marker:String
+  field public-get private-set max-keys:int
+  field public-get private-set delimiter:String
+  field public-get private-set is-truncated?:bool
   
-  {constructor package {default object-info:{Array-of ObjectInfo}, common-prefixes:{Array-of String}}
+  {constructor package {default
+                           object-info:{Array-of ObjectInfo},
+                           name:String,
+                           prefix:String,
+                           marker:String,
+                           max-keys:int,
+                           delimiter:String,
+                           is-truncated?:bool
+                       }
     set self.object-info = object-info
-    set self.common-prefixes = common-prefixes
+    set self.name = name
+    set self.prefix = prefix
+    set self.marker = marker
+    set self.max-keys = max-keys
+    set self.delimiter = delimiter
+    set self.is-truncated? = is-truncated?
   }
   
-  {factory package {from-xml object-info:{Array-of ObjectInfo} = {new {Array-of ObjectInfo}}, common-prefixes:{Array-of String} = {new {Array-of String}}}:ObjectsInfo
-    {return {ObjectsInfo object-info, common-prefixes}}
+  {factory package {from-xml
+                       object-info:{Array-of ObjectInfo} = {new {Array-of ObjectInfo}},
+                       name:String = "",
+                       prefix:String = "",
+                       marker:String = "",
+                       maxkeys:String = "",
+                       delimiter:String = "",
+                       istruncated:String = "",
+                       ...
+                   }:ObjectsInfo
+    
+    let is-truncated?:bool =
+        {switch istruncated
+         case "true" do
+            true
+         else
+            false
+        }
+    
+    {return {ObjectsInfo
+                object-info,
+                name,
+                prefix,
+                marker,
+                {maxkeys.to-int},
+                delimiter,
+                is-truncated?
+            }
+    }
+  }
+  
+  {method public {get-first-object-info}:ObjectInfo
+    {return self.object-info[0]}
+  }
+  
+  {method public {get-parent-directory}:String
+    let parent-dir:String = ""
+    {return parent-dir}
   }
 }
 

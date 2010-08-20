@@ -1,7 +1,25 @@
-{curl-file-attributes character-encoding = "shift-jis"}
+||| Copyright (C) 1998-2010, Sumisho Computer Systems Corp. All Rights Reserved.
+
+||| Licensed under the Apache License, Version 2.0 (the "License");
+||| you may not use this file except in compliance with the License.
+||| You may obtain a copy of the License at
+|||
+|||     http://www.apache.org/licenses/LICENSE-2.0
+|||
+||| Unless required by applicable law or agreed to in writing, software
+||| distributed under the License is distributed on an "AS IS" BASIS,
+||| WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+||| See the License for the specific language governing permissions and
+||| limitations under the License.
+
+|||
+||| @authors Mana Seino
+|||
+
+{curl-file-attributes character-encoding = "utf8"}
 
 || ----------------------------------------------
-|| Make�@a request about Amazon S3 and send request
+|| Make　a request about Amazon S3 and send request
 {define-class public S3Client
   {define-proc package {parse-error-xml bis:#ByteInputStream}:void
     let xr:XMLReader = {SAXParser}
@@ -25,7 +43,7 @@
   field private default-host:String
   field private headers:HttpRequestHeaders = {HttpRequestHeaders.default}
   field private secret-key-id:String
-        
+  
   || --------------------------------------------
   || default constructor
   || (param)
@@ -39,19 +57,44 @@
   }
   
 ||--  || --------------------------------------------
-||--  || head-object
+||--  || TODO: head-object ResponseHeaderの解析をする必要がある
 ||--  {method public {head-object bucket:String, key:String}:HttpByteInputStream
 ||--    
 ||--    def verb = HttpRequestMethod.head     
 ||--    let url:Url = {self.return-signature-and-url bucket, key, verb}
+||--    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+||--    
 ||--    {try
 ||--        def reply = {open-http-file url, self.headers, verb}
-||--        {self.initialize-headers}
 ||--        {return reply}
 ||--     catch ex:Exception do
 ||--        {throw ex}
+||--     finally
+||--        {reply.close}
+||--        {self.initialize-headers}
 ||--    }
 ||--  }
+
+  || --------------------------------------------
+  || Delete bucket
+  || (param)
+  || bucket: bucket name
+  {method public {delete-bucket bucket:String}:void
+    
+    def verb = HttpRequestMethod.delete
+    let uri:Url = {self.return-signature-and-url bucket, "", verb}
+    let reply:#HttpByteInputStream
+    
+    {try 
+        set reply = {open-http-file uri, {self.get-headers}, verb}
+        
+     catch ex:Exception do
+        {throw ex}
+     finally
+        {reply.close}
+        {self.initialize-headers}
+    }
+  }
   
   || --------------------------------------------
   || Get bucket list
@@ -60,8 +103,8 @@
   {method public {get-bucket-list}:Buckets
     def verb = HttpRequestMethod.get
     let url:Url = {self.return-signature-and-url null, "", verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
-        
+    let reply:#HttpByteInputStream
+    
     {try
         set reply = {open-http-file url, self.headers, verb}
         {return {self.parse-bucket-xml reply}}
@@ -77,13 +120,12 @@
   || get object list in bucket
   || (param)
   || bucket: bucket name
-  || key: option�@(e.g. "?acl", "?location")
   || (return)
   || Object list
-  {method public {get-bucket bucket:String, key:String = ""}:ObjectsInfo
+  {method public {get-bucket bucket:String}:ObjectsInfo
     def verb = HttpRequestMethod.get
-    let url:Url = {self.return-signature-and-url bucket, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let url:Url = {self.return-signature-and-url bucket, "", verb}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file url, self.headers, verb}
@@ -107,19 +149,18 @@
     
     def verb = HttpRequestMethod.get
     let uri:Url = {self.return-signature-and-url bucket, key, verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file uri, self.headers, verb}
-        {return reply}
+        {return {non-null reply}}
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
         {self.initialize-headers}
     }
   }
- 
+  
   || --------------------------------------------
   || Put new bucket
   || (param)
@@ -133,7 +174,7 @@
         {self.set-amz-headers "x-amz-acl", acl}
     }
     let url:Url = {self.return-signature-and-url bucket, "", verb}
-    let reply:HttpByteInputStream = {uninitialized-value-for-type HttpByteInputStream}
+    let reply:#HttpByteInputStream
     
     {try
         set reply = {open-http-file url, self.headers, verb}
@@ -144,43 +185,6 @@
         {self.initialize-headers}
     }
   }
-  
-||--  Moved to bucket.scurl
-||--  || --------------------------------------------
-||--  || put-object
-||--  {method public {put-object
-||--                     bucket:#String,
-||--                     key:String,
-||--                     object:ByteArray,
-||--                     acl:#String = null
-||--                 }:void
-||--    
-||--    def content-type = {get-extension {url "." & key}}
-||--    def verb = HttpRequestMethod.put      
-||--    {if-non-null acl then
-||--        {self.set-amz-headers "x-amz-acl", acl}
-||--    }
-||--    set self.headers["Content-Type"] = content-type
-||--    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
-||--    
-||--    {open-http-file
-||--        url,
-||--        self.headers,
-||--        verb,
-||--        data = {ByteArrayHttpRequestData object}
-||--    }
-||--  }
-||--  
-||--  || --------------------------------------------
-||--  || delete-bucket
-||--  {method public {delete-bucket bucket:String}:void
-||--    
-||--    def verb = HttpRequestMethod.delete
-||--    def key = "/"
-||--    let (signature:String, url:Url) = {self.return-signature-and-url bucket, key, verb}
-||--
-||--    {open-http-file url, self.headers, verb}
-||--  }
   
   || Get amz-headers
   {method package {get-all-amz-headers amz-headers:{HashTable-of String, String}}:String
@@ -237,7 +241,7 @@
   
   || --------------------------------------------
   || XML parser
- 
+  
   {method package {parse-object-xml bis:#ByteInputStream}:ObjectsInfo
     let xr:XMLReader = {SAXParser}
     {let handler:ObjectParser = {ObjectParser}}
@@ -280,7 +284,7 @@
         {throw ex}
     }
   }
-
+  
   
   || Return Signature and RequestURL
   || (return)

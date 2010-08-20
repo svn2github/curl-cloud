@@ -1,7 +1,7 @@
 {curl 7.0 package}
 {curl-file-attributes character-encoding = "utf8"}
 {package COM.CURLAP.CLOUD.AWS.S3,
-    {compiler-directives careful? = true}
+    {compiler-directives careful? = true, allow-slow-spliced-arguments? = true}
 }
 {import * from CURL.GUI.BASE}
 {import * from CURL.IO.HTTP}
@@ -17,4 +17,4 @@
 {include "open-file.scurl"}
 {include "s3-client.scurl"}
 {include "saxparser.scurl"}
-{include "write-file.scurl"}
+||--{include "write-file.scurl"}
