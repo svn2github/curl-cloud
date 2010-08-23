@@ -508,7 +508,7 @@
                                  width = 834px,
                                  height = 478px}
     
-    {self._canvas.add self._bucket-space, x = 76px, y = 32px}
+    {self._canvas.add self._bucket-space, x = 76px, y = 31px}
     
     set self._animate-timer.repeat = 0
     set CloudDialog.CloudImage-path = CloudDialog.CloudImage90-path
