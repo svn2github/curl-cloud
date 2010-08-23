@@ -2,15 +2,15 @@
 
 
 {define-class public final BucketSpace {inherits Frame}
-
+  
   field private _cloud:CloudDialog
   field private _bucket-shape:BucketShape
-
+  
   {constructor {default cloud:CloudDialog, bucket-shape:BucketShape, s3:S3Client, ...}
     {construct-super
         background = {FillPattern.from-url {url "./Image/BucketSpace.png"}},
         {splice ...}}
-
+    
     set self._cloud = cloud
     set self._bucket-shape = bucket-shape
     
@@ -43,6 +43,6 @@
         }
     {self.add vb}
   }
-
+  
 }
  

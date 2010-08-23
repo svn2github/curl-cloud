@@ -3,7 +3,7 @@
 
 {persistent-data
     "Amazon S3 API Demo",
-    duration = 1minutes
+    duration = 10minutes
 }
 
 

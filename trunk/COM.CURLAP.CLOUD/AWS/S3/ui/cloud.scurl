@@ -15,6 +15,7 @@
   field private _canvas:Canvas
   field private _s3client:S3Client
   field private _buckets:{HashTable-of String, BucketShape} = {{HashTable-of String, BucketShape}}
+  field private _bucket-names:{Array-of String} = {{Array-of String}}
   field private _bucket-space:#BucketSpace = null
   
   field private _context-normal:EventHandler
@@ -38,7 +39,7 @@
     
     set self.title = "Amazon S3 "
     set self._s3client = s3client
-
+    
     {self.set-icon
         {Pixmap.from-url  {url "./Image/S3Icon.png"}},
         {Pixmap.from-url  {url "./Image/S3IconSmall.png"}}}
@@ -67,13 +68,9 @@
                 
                 let gr:GRect = {bucket-shape.get-bounds}
                 {if {self.check-bucket-pos
-                        new-xx, new-yy,
-                        gr.lextent + gr.rextent,
-                        gr.ascent + gr.descent} then
-                    {self._canvas.move-to-xy
-                        self._selected-child,
-                        new-xx,
-                        new-yy}
+                        new-xx - gr.width / 2, new-yy - gr.height / 2,
+                        gr.width, gr.height} then
+                    {self._canvas.move-to-xy self._selected-child, new-xx, new-yy}
                     set self._click-position-x = e.x
                     set self._click-position-y = e.y
                  else
@@ -171,10 +168,11 @@
                                     {try
                                         {self._s3client.put-bucket bucket-name}
                                         || BucketShape生成時の{Bucket}は暫定処理
-                                        || キャンバスへの座標指定は、暫定　（refresh-bucketsメソッドで行う予定）
+                                        || キャンバス座標は、refresh-bucketsメソッドで修正される
                                         def bs = {BucketShape bucket-name, {Bucket bucket-name, {DateTime}, self._s3client}}
-                                        {self._canvas.add bs, x = 250px, y = 200px}
+                                        {self._canvas.add bs, x = 500px, y = 300px}
                                         {self._buckets.set bucket-name, bs}
+                                        {self._bucket-names.append bucket-name}
                                         {self.refresh-buckets}
                                      catch ex:S3Exception do
                                         def msg = {popup-message ex.message, title = ex.code}
@@ -228,6 +226,12 @@
                                     {self._s3client.delete-bucket bucket-shape.bucket-name}
                                     {bucket-shape.detach}
                                     {self._buckets.remove bucket-shape.bucket-name}
+                                    {for nm key idx in self._bucket-names do
+                                        {if nm == bucket-shape.bucket-name then
+                                            {self._bucket-names.remove idx}
+                                            {break}
+                                        }
+                                    }
                                     {popup-message "Bucket removed!"}
                                  catch ex:S3Exception do
                                     {popup-message ex.message, title = ex.code}
@@ -278,16 +282,6 @@
                 {self.set-window-shape
                     {Region.from-path CloudDialog.CloudImage-path}
                 }
-                
-||++            let (xx:Distance, yy:Distance, ww:Distance, hh:Distance) =
-||++                {CloudDialog.CloudImage-path.get-bounding-box}
-||++            {output "------------------------------------------------------------"}
-||++            {outfmt "  x: %8.3f\r\n", xx / {any-to-Distance 1px}}
-||++            {outfmt "  y: %8.3f\r\n", yy / {any-to-Distance 1px}}
-||++            {outfmt "  w: %8.3f\r\n", ww / {any-to-Distance 1px}}
-||++            {outfmt "  h: %8.3f\r\n", hh / {any-to-Distance 1px}}
-                
-||++            {self.request-draw}
             },
             interval = 0.4s
         }
@@ -297,33 +291,171 @@
     {self.set-window-shape
         {Region.from-path CloudDialog.CloudImage-path}
     }
-    
-    || TODO: Bucket配列を取得し、self._bucketsに設定する
-    
-    {self.refresh-buckets}
   }
   
-||--  {method public {draw r2d:Renderer2d}:void
-||--    {super.draw r2d}
-||--    {r2d.render-path CloudDialog.CloudImage-path, stroke-thickness = {any-to-Distance 2px}}
-||--  }
   
   {method public {show-dialog}:void
+    
+    || TODO: Bucket配列を取得し、self._bucketsに設定する
+    let buckets:Buckets = {self._s3client.get-bucket-list}
+    {for bucket in buckets.buckets do
+        def bs = {BucketShape bucket.name, bucket, self._s3client}
+        {self._canvas.add bs, x = 500px, y = 300px}
+        {self._buckets.set bucket.name, bs}
+        {self._bucket-names.append bucket.name}
+    }
+    
     {self.show center? = true}
-    {self.refresh-buckets}
+    {after 0.1s do
+        {self.refresh-buckets}
+    }
     set self._animate-timer.repeat = -1
   }
-
+  
   {method private {refresh-buckets}:void
-    || @@@ Bucketの自動配置
-  }
-
-{method private {check-bucket-pos xx:Distance, yy:Distance, ww:Distance, hh:Distance}:bool
+    let move?:bool = false
+    let rand:LinearRandom = {LinearRandom}
+    def spc-x = {any-to-Distance 8px}
+    def spc-y = {any-to-Distance 8px}
     
-    let cloud-xx:Distance = {any-to-Distance 138px}
-    let cloud-yy:Distance = {any-to-Distance  92px}
-    let cloud-ww:Distance = {any-to-Distance 714px}
-    let cloud-hh:Distance = {any-to-Distance 358px}
+    let keys:{Array-of String} = {{Array-of String}}
+    {for nm in self._bucket-names do
+        {keys.append nm}
+    }
+    {keys.reverse}
+    
+    {for l1:int = 0 below keys.size do
+        let bs1:BucketShape = {self._buckets.get keys[l1]}
+        let gr1:GRect = {bs1.get-bounds}
+        let (bs1-px:Distance, bs1-py:Distance) = {bs1.xy-offset-to self._canvas}
+        set bs1.x1 = bs1-px - spc-x - gr1.lextent
+        set bs1.y1 = bs1-py - spc-y - gr1.ascent
+        set bs1.x2 = bs1-px + spc-x + gr1.rextent
+        set bs1.y2 = bs1-py + spc-y + gr1.descent
+        
+        set bs1.to-x1 = bs1.x1
+        set bs1.to-y1 = bs1.y1
+        set bs1.to-x2 = bs1.x2
+        set bs1.to-y2 = bs1.y2
+    }
+    {for l1:int = 0 below keys.size do
+        let bs1:BucketShape = {self._buckets.get keys[l1]}
+        let bs1-x1:Distance = bs1.to-x1
+        let bs1-y1:Distance = bs1.to-y1
+        let bs1-x2:Distance = bs1.to-x2
+        let bs1-y2:Distance = bs1.to-y2
+        let ok?:bool = false
+        let move?:bool = false
+        let loop:int = 0
+        {while not ok? do
+            {inc loop}
+            {if loop > 1000 then {break}}
+            let intersect?:bool = false
+            {for l2:int = 0 below keys.size do
+                {if l2 == l1 then {continue}}
+                let bs2:BucketShape = {self._buckets.get keys[l2]}
+                let bs2-x1:Distance = bs2.to-x1
+                let bs2-y1:Distance = bs2.to-y1
+                let bs2-x2:Distance = bs2.to-x2
+                let bs2-y2:Distance = bs2.to-y2
+                {if not ((bs1-x1 < bs2-x1 and bs1-x2 < bs2-x1) or
+                         (bs1-x1 > bs2-x2 and bs1-x2 > bs2-x2) or
+                         (bs1-y1 < bs2-y1 and bs1-y2 < bs2-y1) or
+                         (bs1-y1 > bs2-y2 and bs1-y2 > bs2-y2)) then
+                    set intersect? = true
+                    {break}
+                }
+            }
+            {if intersect? then
+                let in?:bool = false
+                let ww:int = 10
+                let hh:int = 10
+                {while not in? do
+                    let sx:Distance = {rand.next-in-range -ww, ww} * {any-to-Distance 1px}
+                    let sy:Distance = {rand.next-in-range -hh, hh} * {any-to-Distance 1px}
+                    set move? = true
+                    {if {self.check-bucket-pos
+                            bs1-x1 + sx,
+                            bs1-y1 + sy,
+                            bs1-x2 - bs1-x1,
+                            bs1-y2 - bs1-y1} then
+                        set in? = true
+                        {inc bs1-x1, sx}
+                        {inc bs1-y1, sy}
+                        {inc bs1-x2, sx}
+                        {inc bs1-y2, sy}
+                    }
+                }
+             else
+                set ok? = true
+            }
+        }
+        {if move? then
+            set bs1.to-x1 = bs1-x1 + spc-x
+            set bs1.to-y1 = bs1-y1 + spc-y
+            set bs1.to-x2 = bs1-x2 - spc-x
+            set bs1.to-y2 = bs1-y2 - spc-y
+        }
+    }
+    
+    {for l1:int = 0 below keys.size do
+        let bs1:BucketShape = {self._buckets.get keys[l1]}
+        set bs1._animate-timer.repeat = 10
+    }
+  }
+  
+  
+||--  {method private {refresh-buckets}:void
+||--    def st-x = {any-to-Distance 170px}
+||--    def st-y = {any-to-Distance  80px}
+||--    def max-x = st-x + {any-to-Distance 670px}
+||--    def max-y = st-y + {any-to-Distance 360px}
+||--    def spc-x = {any-to-Distance 8px}
+||--    def spc-y = {any-to-Distance 8px}
+||--    let curr-x:Distance = st-x
+||--    let curr-y:Distance = st-y
+||--    let next-y:Distance = st-y
+||--    {for bucket-shape in self._buckets do
+||--        let gr:GRect = {bucket-shape.get-bounds}
+||--        def ww = gr.width
+||--        def hh = gr.height
+||--        {outfmt "ww: %8.3f  hh: %8.3f  name: %s\r\n",
+||--            ww / {any-to-Distance 1px}, hh / {any-to-Distance 1px},
+||--            bucket-shape.bucket-name}
+||--        {if curr-x + ww + spc-x < max-x and curr-y + hh < max-x then
+||--            {self._canvas.move-to-xy bucket-shape, curr-x + ww / 2, curr-y + hh / 2}
+||--            set curr-x = curr-x + ww + spc-x
+||--            {if next-y < curr-y + hh + spc-y then
+||--                set next-y = curr-y + hh + spc-y
+||--            }
+||--         else
+||--            set curr-x = st-x
+||--            set curr-y = next-y
+||--            set next-y = curr-y
+||--            {self._canvas.move-to-xy bucket-shape, curr-x + ww / 2, curr-y + hh / 2}
+||--            set curr-x = curr-x + ww + spc-x
+||--            {if next-y < curr-y + hh + spc-y then
+||--                set next-y = curr-y + hh + spc-y
+||--            }
+||--        }
+||--    }
+||--||--  {method private {refresh-buckets}:void
+||--||++{self._canvas.clear}
+||--||++def buckets = {self._s3.get-bucket-list}
+||--||++{for b:Bucket in buckets.buckets do
+||--||++    def bs = {BucketShape b.name}
+||--||++    {self._canvas.add bs, x = 250px, y = 200px}
+||--||++}
+||--    || @@@ Bucketの自動配置
+||--  }
+
+  
+  {method private {check-bucket-pos xx:Distance, yy:Distance, ww:Distance, hh:Distance}:bool
+    
+    let cloud-xx:Distance = {any-to-Distance 170px}
+    let cloud-yy:Distance = {any-to-Distance  80px}
+    let cloud-ww:Distance = {any-to-Distance 670px}
+    let cloud-hh:Distance = {any-to-Distance 360px}
     
     {if xx < cloud-xx or
         yy < cloud-yy or
@@ -333,64 +465,62 @@
     }
     
     {return true}
-}
-
-{method package {set-context-normal}:void
+  }
+  
+  {method package {set-context-normal}:void
     {if-non-null self._context-current then
         {self.remove-event-handler {non-null self._context-current}}
     }
     {self.add-event-handler self._context-normal}
     set self._context-current = self._context-normal
-}
-
-{method package {remove-context-menu}:void
+  }
+  
+  {method package {remove-context-menu}:void
     {if-non-null self._context-current then
         {self.remove-event-handler {non-null self._context-current}}
     }
     set self._context-current = null
-}
-
-{method package {set-context-back}:void
+  }
+  
+  {method package {set-context-back}:void
     {if-non-null self._context-current then
         {self.remove-event-handler {non-null self._context-current}}
     }
     {self.add-event-handler self._context-back}
-
+    
     set self._context-current = self._context-back
-}
-
-{method package {set-context-remove}:void
+  }
+  
+  {method package {set-context-remove}:void
     {if-non-null self._context-current then
         {self.remove-event-handler {non-null self._context-current}}
     }
     {self.add-event-handler self._context-remove}
     set self._context-current = self._context-remove
-}
-
-
-{method private {disp-bucket-space bucket:BucketShape}:void
+  }
+  
+  
+  {method private {disp-bucket-space bucket:BucketShape}:void
     set self._bucket-space = {BucketSpace
-
                                  self,
                                  bucket,
                                  self._s3client,
                                  width = 834px,
                                  height = 478px}
     
-    {self._canvas.add self._bucket-space, x = 28px, y = 14px}
+    {self._canvas.add self._bucket-space, x = 76px, y = 32px}
     
     set self._animate-timer.repeat = 0
     set CloudDialog.CloudImage-path = CloudDialog.CloudImage90-path
     {self.set-window-shape
         {Region.from-path CloudDialog.CloudImage-path}
     }
-||++{self.request-draw}
     
     {self.set-context-back}
     set self._disp-bucket-space = true
-}
-
-{method package {return-bucket-space}:void
+  }
+  
+  {method package {return-bucket-space}:void
     
     {self._bucket-space.detach}
     set self._bucket-space = null
@@ -402,18 +532,17 @@
     {self.set-window-shape
         {Region.from-path CloudDialog.CloudImage-path}
     }
-||++{self.request-draw}
     
     {self.set-context-normal}
     set self._disp-bucket-space = false
-}
-
-
-||  ------------------------------------------------------------
-||  ------------------------------------------------------------
-||  ------------------------------------------------------------
-
-{method private {initialize}:void
+  }
+  
+  
+  ||  ------------------------------------------------------------
+  ||  ------------------------------------------------------------
+  ||  ------------------------------------------------------------
+  
+  {method private {initialize}:void
     
     {if CloudDialog.CloudImage01-path.empty? then
         {CloudDialog.CloudImage01-path.move-to
@@ -787,6 +916,6 @@
             {Distance2d {any-to-Distance -88px}, {any-to-Distance -33.15626px}}}
     }
     
-}
-
+  }
+  
 }
