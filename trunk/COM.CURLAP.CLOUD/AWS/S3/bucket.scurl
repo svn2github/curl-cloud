@@ -39,24 +39,42 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
   
   || --------------------------------------------
   || delete-object
-  {method public {delete-object key:String}:void
-    def verb = HttpRequestMethod.delete
-    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+  || (param)
+  || key: delete object name
+  || error-if-object-exists?: Trueの場合、削除するディレクトリの中にオブジェクトが存在するときはエラーを返す
+  {method public {delete-object key:String, error-if-object-exists?:bool = false}:void
+    
     let reply:#HttpByteInputStream
     
     {try
+        let objects-info:ObjectsInfo = {self.get-directory key}
+        {if objects-info.object-info.empty? == false and error-if-object-exists? then
+            || ディレクトリの中にオブジェクトが存在する　かつ　エラーを返してほしい
+            {throw {S3Exception "NotEmpty", "Directory is not empty."}}
+         else
+            {for o:ObjectInfo in objects-info.object-info do
+                || ディレクトリの中身を全削除
+                {self.delete-object o.key}
+            }
+        }
+        def verb = HttpRequestMethod.delete
+        let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
         set reply = {open-http-file url, {self.s3.get-headers}, verb}
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
@@ -65,11 +83,11 @@
   || Get list object in bucket
   || (return)
   || Object list
-  {method public {get-bucket key:String = ""}:ObjectsInfo
+  {method public {get-bucket}:ObjectsInfo
     def verb = HttpRequestMethod.get
-    let url:Url = {self.s3.return-signature-and-url self.name, key, verb}
+    let url:Url = {self.s3.return-signature-and-url self.name, "", verb}
     let reply:#HttpByteInputStream
-    set url = {url.set-query "?prefix=" & key & "&delimiter=/"}
+    set url = {url.set-query "?prefix=&delimiter=/"}
     
     {try
         set reply = {open-http-file url, {self.s3.get-headers}, verb}
@@ -77,7 +95,9 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
@@ -100,7 +120,9 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
@@ -152,7 +174,9 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
@@ -192,7 +216,9 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
@@ -233,13 +259,16 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.s3.initialize-headers}
     }
   }
   
   || --------------------------------------------
-  || Write object to file
+  || Write object to local file
   {method public {write-file hbis:HttpByteInputStream, uri:Url}:void
     {try
         {with-open-streams bos:ByteOutputStream = {write-open-byte uri} do
@@ -274,16 +303,8 @@
     {return {Buckets owner, buckets}}
   }
   
-  {method public {find key:String}:{Array-of Bucket}
-    let ret:{Array-of Bucket} = {new {Array-of Bucket}}
-    {for b:Bucket in self.buckets do
-        {if {b.name.find-string key} >= 0 then
-            {ret.append b}
-        }
-    }
-    {return ret}
-  }
-  
+  || バケット名がnameであるバケットとtrueを返す
+  || そのようなバケットがなかった場合、falseを返す
   {method public {get-if-exist name:String}:(Bucket, bool)
     let bucket:Bucket = {uninitialized-value-for-type Bucket}
     {for b:Bucket in self.buckets do

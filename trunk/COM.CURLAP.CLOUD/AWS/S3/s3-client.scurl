@@ -28,13 +28,8 @@
     {xr.set-error-handler handler}
     
     {try
-        || Parse from what is found by opening input-name
         {xr.parse {InputSource byte-stream = bis}}
-     catch ex:IOException do
-        || Handle any exception thrown due to the file read
-        {throw ex}
-     catch ex:SAXParseException do
-        || Handle any exception thrown while parsing the XML
+     catch ex:Exception do
         {throw ex}
     }
   }
@@ -46,10 +41,6 @@
   
   || --------------------------------------------
   || default constructor
-  || (param)
-  || access-key-id: access-key to access Amazon S3
-  || secret-key-id: secret-key
-  || default-host: 
   {constructor public {default access-key-id:String, secret-key-id:String}
     set self.access-key-id = access-key-id
     set self.secret-key-id = secret-key-id
@@ -57,7 +48,7 @@
   }
   
 ||--  || --------------------------------------------
-||--  || TODO: head-object ResponseHeaderの解析をする必要がある
+||--  || TODO: Need to parse ResponseHeader
 ||--  {method public {head-object bucket:String, key:String}:HttpByteInputStream
 ||--    
 ||--    def verb = HttpRequestMethod.head     
@@ -87,11 +78,12 @@
     
     {try 
         set reply = {open-http-file uri, {self.get-headers}, verb}
-        
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.initialize-headers}
     }
   }
@@ -111,7 +103,9 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.initialize-headers}
     }
   }
@@ -133,7 +127,9 @@
      catch ex:Exception do
         {throw ex}
      finally
-        {reply.close}
+        {if reply != null and reply.open? then
+            {reply.close}
+        }
         {self.initialize-headers}
     }
   }
@@ -168,21 +164,27 @@
   || acl: ACL
   {method public {put-bucket bucket:String, acl:#String = null}:void
     
-    def verb = HttpRequestMethod.put
-    
-    {if-non-null acl then
-        {self.set-amz-headers "x-amz-acl", acl}
-    }
-    let url:Url = {self.return-signature-and-url bucket, "", verb}
-    let reply:#HttpByteInputStream
-    
-    {try
-        set reply = {open-http-file url, self.headers, verb}
-     catch ex:Exception do
-        {throw ex}
-     finally
-        {reply.close}
-        {self.initialize-headers}
+    {if {self.bucket-name-valid? bucket} then    
+        def verb = HttpRequestMethod.put
+        
+        {if-non-null acl then
+            {self.set-amz-headers "x-amz-acl", acl}
+        }
+        let url:Url = {self.return-signature-and-url bucket, "", verb}
+        let reply:#HttpByteInputStream
+        
+        {try
+            set reply = {open-http-file url, self.headers, verb}
+         catch ex:Exception do
+            {throw ex}
+         finally
+            {if reply != null and reply.open? then
+                {reply.close}
+            }
+            {self.initialize-headers}
+        }
+     else
+        {throw {Exception "Bucket name is not valid."}}
     }
   }
   
@@ -241,7 +243,6 @@
   
   || --------------------------------------------
   || XML parser
-  
   {method package {parse-object-xml bis:#ByteInputStream}:ObjectsInfo
     let xr:XMLReader = {SAXParser}
     {let handler:ObjectParser = {ObjectParser}}
@@ -252,11 +253,7 @@
         || Parse from what is found by opening input-name
         {xr.parse {InputSource byte-stream = bis}}
         {return handler.objects} 
-     catch ex:IOException do
-        || Handle any exception thrown due to the file read
-        {throw ex}
-     catch ex:SAXParseException do
-        || Handle any exception thrown while parsing the XML
+     catch ex:Exception do
         {throw ex}
     }
   }
@@ -276,19 +273,15 @@
             {buckets.append {Bucket.from-xml {splice args}, s3 = self}}
         }
         {return {Buckets handler.owner, buckets}}
-     catch ex:IOException do
-        || Handle any exception thrown due to the file read
-        {throw ex}
-     catch ex:SAXParseException do
-        || Handle any exception thrown while parsing the XML
+     catch ex:Exception do
         {throw ex}
     }
   }
   
   
-  || Return Signature and RequestURL
+  || Set RequestHeaders and Return RequestURL
   || (return)
-  || Signature , RequestURL
+  || RequestURL
   {method package {return-signature-and-url bucket:#String, key:String, verb:HttpRequestMethod}:Url
     set self.headers["Date"] = {HttpHeaders.date-time-to-http-header-string {DateTime}}
     def resource = {value 
@@ -327,5 +320,14 @@
     def url = {abs-url "http://" & self.headers["Host"] & "/" & key}
     
     {return url}
+  }
+  
+  || TODO: Bucket restrictions
+  {method private {bucket-name-valid? name:String}:bool
+    {if name.size < 3 or name.size > 63 then
+        {return false}
+     else
+        {return true}
+    }
   }
 }

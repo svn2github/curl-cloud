@@ -36,6 +36,7 @@
                         always-return-response-headers? = true
                     }
         
+        || error status
         {switch reply.response-headers.status
          case 403, 404, 409 do
             {S3Client.parse-error-xml reply}

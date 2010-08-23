@@ -125,6 +125,19 @@
     set self.max-keys = max-keys
     set self.delimiter = delimiter
     set self.is-truncated? = is-truncated?
+    
+    {self.object-info.filter
+        {proc {o:ObjectInfo}:bool
+            {type-switch o
+             case f:FileInfo do
+                || If object is directory and object.key equal current directory, object remove object-list
+                {if f.key[f.key.size - 1] == '/' then
+                    {return f.key != self.prefix}
+                }
+            }
+            {return true}
+        }
+    }
   }
   
   {factory package {from-xml
@@ -164,6 +177,11 @@
   
   {method public {get-parent-directory}:String
     let parent-dir:String = ""
+    let s:String = {self.prefix.trim-right-clone trim-chars = {CharClass "/"}}
+    let i:int = {s.find-string "/", search-direction = SearchDirection.backward}
+    {if i >= 0 then
+        set parent-dir = {s.substr 0, {s.find-string "/", search-direction = SearchDirection.backward} + 1}
+    }
     {return parent-dir}
   }
 }

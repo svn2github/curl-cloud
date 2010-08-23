@@ -168,13 +168,19 @@
                                     def msg = {popup-message bucket-name & " is already registered."}
                                  else
                                     || TODO: バケットを追加して、その結果をself._bucketsに設定する
-                                    {self._s3client.put-bucket bucket-name}
-                                    || BucketShape生成時の{Bucket}は暫定処理
-                                    || キャンバスへの座標指定は、暫定　（refresh-bucketsメソッドで行う予定）
-                                    def bs = {BucketShape bucket-name, {Bucket bucket-name, {DateTime}, self._s3client}}
-                                    {self._canvas.add bs, x = 250px, y = 200px}
-                                    {self._buckets.set bucket-name, bs}
-                                    {self.refresh-buckets}
+                                    {try
+                                        {self._s3client.put-bucket bucket-name}
+                                        || BucketShape生成時の{Bucket}は暫定処理
+                                        || キャンバスへの座標指定は、暫定　（refresh-bucketsメソッドで行う予定）
+                                        def bs = {BucketShape bucket-name, {Bucket bucket-name, {DateTime}, self._s3client}}
+                                        {self._canvas.add bs, x = 250px, y = 200px}
+                                        {self._buckets.set bucket-name, bs}
+                                        {self.refresh-buckets}
+                                     catch ex:S3Exception do
+                                        def msg = {popup-message ex.message, title = ex.code}
+                                     catch ex:Exception do
+                                        def msg = {popup-message ex.message, title = "Error"}
+                                    }
                                 }
                             }
                         }
@@ -215,13 +221,19 @@
                         {on Action do
                             def ret = {popup-question "Remove?"}
                             {if ret == Dialog.yes then
-                                || Bucketの削除
-                                def bucket-shape = self._selected-child asa BucketShape
-                                {bucket-shape.detach}
-                                {self._buckets.remove bucket-shape.bucket-name}
-                                || TODO: Bucketの削除処理（bucket-shape.bucket）
-                                {self._s3client.delete-bucket bucket-shape.bucket-name}
-                                {popup-message "Bucket removed!"}
+                                {try
+                                    || Bucketの削除
+                                    def bucket-shape = self._selected-child asa BucketShape
+                                    || TODO: Bucketの削除処理（bucket-shape.bucket）
+                                    {self._s3client.delete-bucket bucket-shape.bucket-name}
+                                    {bucket-shape.detach}
+                                    {self._buckets.remove bucket-shape.bucket-name}
+                                    {popup-message "Bucket removed!"}
+                                 catch ex:S3Exception do
+                                    {popup-message ex.message, title = ex.code}
+                                 catch ex:Exception do
+                                    {popup-message ex.message, title = "Error"}
+                                }
                             }
                         }
                     }
@@ -303,14 +315,8 @@
   }
 
   {method private {refresh-buckets}:void
-||++{self._canvas.clear}
-||++def buckets = {self._s3.get-bucket-list}
-||++{for b:Bucket in buckets.buckets do
-||++    def bs = {BucketShape b.name}
-||++    {self._canvas.add bs, x = 250px, y = 200px}
-||++}
     || @@@ Bucketの自動配置
-}
+  }
 
 {method private {check-bucket-pos xx:Distance, yy:Distance, ww:Distance, hh:Distance}:bool
     

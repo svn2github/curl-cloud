@@ -54,6 +54,7 @@
   
   field public-get private-set bucket:Bucket
   field private _path:String = ""
+  field private _parent-path:String = ""
   field package record-set:RecordSet
   
   {constructor public {default bucket:Bucket}
@@ -63,8 +64,16 @@
             bucket-set-fields,
             modifiable? = true
         }
-    {for o:ObjectInfo in {self.bucket.get-bucket}.object-info do
-        {self.add-object-info o}
+    {try
+        let objects-info:ObjectsInfo = {self.bucket.get-bucket}
+        {for o:ObjectInfo in objects-info.object-info do
+            {self.add-object-info o}
+        }
+        set self._parent-path = {objects-info.get-parent-directory}
+     catch ex:S3Exception do
+        {popup-message ex.message, title = ex.code}
+     catch ex:Exception do
+        {popup-message ex.message, title = "Error"}
     }
   }
   
@@ -82,17 +91,32 @@
     }
   }
   
+  {getter public open {parent-path}:String
+    {return self._parent-path}
+  }
+  {setter public open {parent-path s:String}:void
+    {if s != self._parent-path then
+        set self._parent-path = s
+    }
+  }
+  
   {method private {clear-records}:void
     {self.record-set.delete-all}
   }
   
   {method public open {delete-object key:String}:void
     def rd = {RecordData key = key}
-    {if-non-null r = {self.record-set.select-one filter = rd} then
-        {self.internal-delete-object key}
-        {r.delete}
-     else
-        {error "internal error"}
+    {try
+        {if-non-null r = {self.record-set.select-one filter = rd} then
+            {self.internal-delete-object key}
+            {r.delete}
+         else
+            {error "internal error"}
+        }
+     catch ex:S3Exception do
+        {popup-message ex.message, title = ex.code}
+     catch ex:Exception do
+        {popup-message ex.message, title = "Error"}
     }
   }
   
@@ -101,14 +125,23 @@
         {error "internal error"}
     }
     def key = {r.get "key"} asa String
-    {self.internal-delete-object key}
-    {r.delete}
+    {try
+        {self.internal-delete-object key}
+        {r.delete}
+     catch ex:S3Exception do
+        {popup-message ex.message, title = ex.code}
+     catch ex:Exception do
+        {popup-message ex.message, title = "Error"}
+    }
   }
   
   ||----> TODO: implement the following features to interact with S3
   
   {getter public {path-at-root?}:bool
     || TODO: figure out if the path is root or not.
+    {if self.parent-path == "" and self.path == "" then
+        {return true}
+    }
     {return false}
   }
   
@@ -123,31 +156,52 @@
         {new-record.set "size", f.size}
         {new-record.set "storage-class", f.storage-class}
         {new-record.set "owner", f.owner}
-        || TODO: somehow set type -- what's the interface?
         {new-record.set "type", "file"}
      case d:DirectoryInfo do
-        || TODO: somehow set type -- what's the interface?
         {new-record.set "type", "directory"}
     }
     {self.record-set.append new-record}
   }
   
-  {method private {note-path-changed}:void
+||--  {method private {note-path-changed}:void
+  {method package {note-path-changed}:void
     {self.clear-records}
-    || TODO: add appropriate objects for new path    
+    || TODO: add appropriate objects for new path
+    {try
+        {for o:ObjectInfo in {self.bucket.get-directory self.path}.object-info do
+            {self.add-object-info o}
+        }
+     catch ex:S3Exception do
+        {popup-message ex.message, title = ex.code}
+     catch ex:Exception do
+        {popup-message ex.message, title = "Error"}
+    }
   }
   
   {method public open {go-to-parent}:void
     || s3 up one level on path
+    let parent-dir:String = ""
+    let s:String = {self.path.trim-right-clone trim-chars = {CharClass "/"}}
+    let i:int = {s.find-string "/", search-direction = SearchDirection.backward}
+    {if i >= 0 then
+        set parent-dir = {s.substr 0, {s.find-string "/", search-direction = SearchDirection.backward} + 1}
+    }
+    set self.path = parent-dir
+    {self.note-path-changed}
   }
   
   {method public open {add-folder key:String}:void
     || s3 add folder operation
+    {if self.path != "" then
+        set key = self.path & key
+    }
     {try
         {self.bucket.put-directory key}
         {self.add-object-info {{self.bucket.get-directory key}.get-first-object-info}}
+     catch ex:S3Exception do
+        {popup-message ex.message, title = ex.code}
      catch ex:Exception do
-        {popup-message ex.message}
+        {popup-message ex.message, title = "Error"}
     }
   }
   
@@ -158,12 +212,14 @@
      case f:LocalFile do
         {if-non-null info = {f.info} then
             {try
-                {self.bucket.put-object-by-url object-url.filename, object-url}
+                {self.bucket.put-object-by-url self.path & object-url.filename, object-url}
                 {self.add-object-info
-                    {{self.bucket.get-directory object-url.filename}.get-first-object-info}
+                    {{self.bucket.get-directory self.path & object-url.filename}.get-first-object-info}
                 }
+             catch ex:S3Exception do
+                {popup-message ex.message, title = ex.code}
              catch ex:Exception do
-                {popup-message ex.message}
+                {popup-message ex.message, title = "Error"}
             }
         }
     }
@@ -174,8 +230,13 @@
                           dir:LocalDirectory
                       }:void
     || s3 download object operation
-    {self.bucket.write-file {self.bucket.get-object key}, {dir.url.concat key}}
-    
+    {try
+        {self.bucket.write-file {self.bucket.get-object key}, {dir.url.concat key}}
+     catch ex:S3Exception do
+        {popup-message ex.message, title = ex.code}
+     catch ex:Exception do
+        {popup-message ex.message, title = "Error"}
+    }
   }
   
   {method private {internal-delete-object key:String}:void
@@ -183,7 +244,7 @@
     {try
         {self.bucket.delete-object key}
      catch ex:Exception do
-        {popup-message ex.message}
+        {throw ex}
     }
   }
   
@@ -588,7 +649,7 @@
     set rg.border-width = 2px
     set rg.display-record-selectors? = false
     
-    || Set columns and cell formatting.
+    || Set columns and cell formatting, record sorting.
     set rg.automatic-columns? = false
     set rg.columns =
         {new {Array-of RecordGridColumn},
@@ -616,6 +677,7 @@
                 width = 3cm
             }
         }
+    set rg.sort = "type"
     
     || Setup event handlers.
     {rg.add-event-handler
@@ -691,6 +753,12 @@
                 {switch s
                  case "directory" do
                     || TODO: open/set path to new directory
+                    {type-switch {rec.get "key"}
+                     case str:String do
+                        set self._bucket-model.path = str
+                        {self._bucket-model.note-path-changed}
+                        {return}
+                    }
                 }
             }
         }
@@ -761,7 +829,13 @@
             title = {hlmessage Add Folder}
         }
     {if-non-null returned-text then
-        {self.bucket-model.add-folder returned-text}
+        {try
+            {self.bucket-model.add-folder returned-text}
+         catch ex:S3Exception do
+            {popup-message ex.message, title = ex.code}
+         catch ex:Exception do
+            {popup-message ex.message, title = "Error"}
+        }
     }
   }
   
