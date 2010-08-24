@@ -171,8 +171,24 @@
     }
   }
   
-  {method public {get-first-object-info}:ObjectInfo
-    {return self.object-info[0]}
+  {method public {get-object-info key:String}:(ObjectInfo, bool)
+    let object:ObjectInfo = {uninitialized-value-for-type ObjectInfo}
+    {for o:ObjectInfo in self.object-info do
+        let object-key:String =
+            {type-switch o
+             case d:DirectoryInfo do
+                {d.key.trim-right-clone trim-chars = {CharClass "/"}}
+             else
+                o.key
+            }
+        {if object-key == key then
+            set object = o
+            {return object, true}
+        }
+    }
+    {return object, false}
+    
+    
   }
   
   {method public {get-parent-directory}:String

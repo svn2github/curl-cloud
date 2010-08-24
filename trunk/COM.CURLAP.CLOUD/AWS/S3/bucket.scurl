@@ -56,14 +56,17 @@
     let reply:#HttpByteInputStream
     
     {try
-        let objects-info:ObjectsInfo = {self.get-directory key}
-        {if objects-info.object-info.empty? == false and error-if-object-exists? then
-            || ディレクトリの中にオブジェクトが存在する　かつ　エラーを返してほしい
-            {throw {S3Exception "NotEmpty", "Directory is not empty."}}
-         else
-            {for o:ObjectInfo in objects-info.object-info do
-                || ディレクトリの中身を全削除
-                {self.delete-object o.key}
+        {if key[key.size - 1] == '/' then
+            || if object is directory
+            let objects-info:ObjectsInfo = {self.get-directory key}
+            {if objects-info.object-info.empty? == false and error-if-object-exists? then
+                || ディレクトリの中にオブジェクトが存在する　かつ　エラーを返してほしい
+                {throw {S3Exception "NotEmpty", "Directory is not empty."}}
+             else
+                {for o:ObjectInfo in objects-info.object-info do
+                    || ディレクトリの中身を全削除
+                    {self.delete-object o.key}
+                }
             }
         }
         def verb = HttpRequestMethod.delete

@@ -10,8 +10,7 @@
 {import * from CURL.ENGINE.APPLET}
 {import * from CURL.GRAPHICS.WINDOW}
 {import * from CURL.GUI.SHAPES}
-
-{import * from COM.CURLAP.CLOUD.AWS.S3}
+{import * from CURL.UTIL.MIME-ASSOC}
 
 {include "interface.scurl"}
 {include "login.scurl"}

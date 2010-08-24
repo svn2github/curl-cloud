@@ -197,7 +197,7 @@
     }
     {try
         {self.bucket.put-directory key}
-        {self.add-object-info {{self.bucket.get-directory key}.get-first-object-info}}
+        {self.add-object-info {{self.bucket.get-directory key}.get-object-info key}}
      catch ex:S3Exception do
         {popup-message ex.message, title = ex.code}
      catch ex:Exception do
@@ -214,7 +214,7 @@
             {try
                 {self.bucket.put-object-by-url self.path & object-url.filename, object-url}
                 {self.add-object-info
-                    {{self.bucket.get-directory self.path & object-url.filename}.get-first-object-info}
+                    {{self.bucket.get-directory self.path & object-url.filename}.get-object-info self.path & object-url.filename}
                 }
              catch ex:S3Exception do
                 {popup-message ex.message, title = ex.code}
@@ -311,9 +311,16 @@
          case s:String do
             {switch s
              case "directory" do
-                set self.icon-frame.background = "yellow"
+||++            set self.icon-frame.background = "yellow"
+                set self.icon-frame.background = {url "./Image/folder.png"}
              else
-                set self.icon-frame.background = "red"
+||++            set self.icon-frame.background = "red"
+                def type = {file-extension-to-mime-type {url "./" & {rec.get "key"}}.extension}
+                {if {type.find-string "image/"} == -1 then
+                    set self.icon-frame.background = {url "./Image/file.png"}
+                 else
+                    set self.icon-frame.background = {url "./Image/image.png"}
+                }
             }
         }
     }
