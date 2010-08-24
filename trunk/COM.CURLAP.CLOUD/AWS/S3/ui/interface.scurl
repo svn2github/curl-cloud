@@ -231,7 +231,7 @@
                       }:void
     || s3 download object operation
     {try
-        {self.bucket.write-file {self.bucket.get-object key}, {dir.url.concat key}}
+        {self.bucket.write-file {self.bucket.get-object key}, {dir.url.concat {url key}.filename}}
      catch ex:S3Exception do
         {popup-message ex.message, title = ex.code}
      catch ex:Exception do

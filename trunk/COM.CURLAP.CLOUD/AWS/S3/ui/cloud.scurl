@@ -162,7 +162,7 @@
                                     "Backet Name: "}
                             {if-non-null bucket-name then
                                 {if {self._buckets.key-exists? bucket-name} then
-                                    def msg = {popup-message bucket-name & " is already registered."}
+                                    def msg = {popup-message bucket-name & " is already registered.", title="Error"}
                                  else
                                     || TODO: バケットを追加して、その結果をself._bucketsに設定する
                                     {try
@@ -232,7 +232,7 @@
                                             {break}
                                         }
                                     }
-                                    {popup-message "Bucket removed!"}
+                                    {popup-message bucket-shape.bucket-name & " was removed", title="Result"}
                                  catch ex:S3Exception do
                                     {popup-message ex.message, title = ex.code}
                                  catch ex:Exception do
