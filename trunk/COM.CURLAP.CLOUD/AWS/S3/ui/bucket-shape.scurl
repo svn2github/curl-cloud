@@ -41,11 +41,20 @@
         {TextFlowBox
             horigin = "center",
             vorigin = "center",
+            text-selectable? = false,
+            font-weight = FontWeight.bold,
             name,
             color = FillPattern.white
         }
-    
-    {is.add txt}
+    let box:HBox = 
+        {HBox
+            horigin = "center",
+            vorigin = "center",
+            margin = 4px,
+            background = {FillPattern.from-rgb 0.5, 0.5, 0.5, opacity = 0.2},
+            txt
+        }
+    {is.add box}
     
     {self.add is, replace? = true}
     
