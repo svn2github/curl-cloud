@@ -66,23 +66,29 @@
                 || tf-Access.valueとpf-Secret.valueの値で、ログインを行う。　(S3Client)
                 set self._s3client = {S3Client tf-Access.value, pf-Secret.value}
                 
-                || Amazon S3へのログイン成功時
-                || TODO: Amazon S3へのアクセス情報の引数を追加する
-                {if-non-null self._s3client then
-                    let cloud:CloudDialog = {CloudDialog
-                                                self, {non-null self._s3client}
-                                            }
-                    {cloud.show-dialog}
-                    {self.hide}
+                {try
+                    {self._s3client.get-bucket-list}
                     
-                    set self._AccessKey = tf-Access.value
-                    set self._SecretKey = pf-Secret.value
-                    {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
-                    {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
-                    {set-persistent-data LoginDialog.persistent-key, pd}
-                    {commit-persistent-data}
-                    {output "AccessKey: [" & self._AccessKey & "]"}
-                    {output "SecretKey: [" & self._SecretKey & "]"}
+                    || Amazon S3へのログイン成功時
+                    || TODO: Amazon S3へのアクセス情報の引数を追加する
+                    {if-non-null self._s3client then
+                        let cloud:CloudDialog = {CloudDialog
+                                                    self, {non-null self._s3client}
+                                                }
+                        {cloud.show-dialog}
+                        {self.hide}
+                        
+                        set self._AccessKey = tf-Access.value
+                        set self._SecretKey = pf-Secret.value
+                        {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
+                        {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
+                        {set-persistent-data LoginDialog.persistent-key, pd}
+                        {commit-persistent-data}
+                        {output "AccessKey: [" & self._AccessKey & "]"}
+                        {output "SecretKey: [" & self._SecretKey & "]"}
+                    }
+                 catch ex:S3Exception do
+                    {popup-message ex.message, title = ex.code}
                 }
             }
         }

@@ -435,7 +435,7 @@
         }
     set self.add-folder-button =
         {CommandButton
-            label = {hlmessage Add Folder},
+            label = {hlmessage Add Directory},
             bound-command = {self.get-command "bucketbrowser.add-folder"}
         }
     set self.add-object-button =
@@ -684,7 +684,7 @@
                 width = 3cm
             }
         }
-    set rg.sort = "type"
+    set rg.sort = "type, key"
     
     || Setup event handlers.
     {rg.add-event-handler
