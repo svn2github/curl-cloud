@@ -1,0 +1,28 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+{define-class package HttpRequester
+  
+  field private signature-generator:SignatureGenerator = {SignatureGenerator}
+  
+  || Get XML file from EC2
+  {method package {request-ec2
+                      query-parameters:{Array-of String},
+                      secret-key:String
+                  }:#HttpTextInputStream
+    let request:String = "https://ec2.amazonaws.com/?"
+    {for each-element:String in query-parameters do
+        set request = request & each-element & "&"
+    }
+    set request = request 
+                  & "Signature=" 
+                  & {self.signature-generator.get-signature query-parameters, secret-key}
+    let http-file:HttpFile = {{abs-url request}.instantiate-File} asa HttpFile
+    {try
+        def response = {http-file.http-read-open always-return-response-headers? = true}
+        {return response}
+     catch exception:HttpException do
+        {throw exception}
+    }
+  }
+}

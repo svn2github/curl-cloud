@@ -1,0 +1,17 @@
+{curl 7.0 package}
+{curl-file-attributes character-encoding = "utf8"}
+{package COM.CURLAP.CLOUD.AWS.EC2,
+    {compiler-directives careful? = true}
+}
+{include "ec2-client.scurl"}
+{include "http-requester.scurl"}
+{include "query.scurl"}
+{include "sax-parser.scurl"}
+{include "signature-generator.scurl"}
+
+{import * from COM.CURLAP.CLOUD.AWS.S3.UTIL}
+{import * from CURL.IO.HTTP}
+{import * from CURL.UTIL.BASE64}
+{import * from CURL.XML.SAX.BASE}
+{import * from CURL.XML.SAX.HELPERS}
+{import * from CURL.XML.SAX.PARSER}

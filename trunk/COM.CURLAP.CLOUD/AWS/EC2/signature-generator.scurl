@@ -1,0 +1,30 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+ 
+{define-class package SignatureGenerator
+  
+  || Generate signature form given query parameters and secret key.
+  {method package {get-signature
+                      query-parameters:{Array-of String},
+                      secret-key:String
+                  }:String
+    {query-parameters.sort}
+    let string-to-sign:String = "GET\nec2.amazonaws.com\n/\n"
+    {unless query-parameters.empty? do
+        {set string-to-sign = string-to-sign & {query-parameters.get 0}}
+        {query-parameters.remove 0}
+    }
+    {until query-parameters.empty? do
+        {set string-to-sign = string-to-sign & "&" & {query-parameters.get 0}}
+        {query-parameters.remove 0}
+    }
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode
+                                {hmac-sha-1 secret-key, string-to-sign}
+                            }
+                        }
+                    }
+    {return signature}
+  }
+}
