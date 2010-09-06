@@ -1,6 +1,90 @@
 
 {curl-file-attributes character-encoding = "utf8"}
 
+|| Error information
+{define-class public EC2Error
+  field public-get package-set code:String = ""
+  field public-get package-set message:String = ""
+}
+
+|| Handler for EC2 error parsing
+{define-class package EC2ErrorHandler {inherits DefaultHandler}
+  field package-get private-set ec2-errors:{Array-of EC2Error}
+||--  field private ec2-error:EC2Error
+  field private data:StringBuf
+  
+  {constructor package {default}
+    set self.ec2-errors = {{Array-of EC2Error}}
+||++set self.ec2-error = {EC2Error}
+    set self.data = {StringBuf}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void
+  }
+  
+  {method public {start-elemant
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "Errors" do
+||++    set self.ec2-errors = {{Array-of EC2Error}}
+     case "Error" do
+        {self.ec2-errors.append {EC2Error}}
+||++    set self.ec2-error = {EC2Error}
+     else
+        || do nothing
+    }
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     url:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {switch name
+     case "Code" do
+        set self.ec2-errors[self.ec2-errors.size].code = {self.data.to-String}
+||++    set self.ec2-error.code = {self.data.to-String}
+     case "Message" do
+        set self.ec2-errors[self.ec2-errors.size].message = {self.data.to-String}
+||++    set self.ec2-error.message = {self.data.to-String}
+     case "Error" do
+        || skip
+||++    {self.ec2-errors.append self.ec2-error}
+     else
+        || do nothing
+    }
+  }
+  
+  {method public {end-document}:void
+  }
+}
+
+|| EC2 exception class
+{define-class public EC2Exception {inherits Exception}
+  field public-get private-set code:String
+  
+  {constructor public {default code:String, message:String}
+    set self.code = code
+    {construct-super message}
+  }
+}
+
 || Availability zone information
 {define-class public AvailabilityZone
   field public-get package-set zone-name:String = ""
@@ -43,18 +127,18 @@
   }
   
   {method public {characters
-                      ch:StringBuf,
-                      start:int,
-                      length:int
-                  }:void
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
     {self.data.clear}
     {self.data.concat {ch.substr start, length}}
   }
   
   {method public {end-element
-                      url:String,
-                      name:String,
-                      qname:String
+                     url:String,
+                     name:String,
+                     qname:String
                  }:void
     {switch name
      case "item" do
@@ -76,29 +160,57 @@
   }
 }
 
-|| Error information
-{define-class public EC2Error
-  field public-get package-set code:String = ""
-  field public-get package-set message:String = ""
+|| RunInstancesResponse
+{define-class public RunInstancesResponse
+  field public-get package-set request-id:String = ""
+  field public-get package-set owner-id:String = ""
+  field public-get package-set reservation-id:String = ""
+  field public-get package-set group-set:{Array-of Group} = {{Array-of Group}}
+  field public-get package-set instance-set:{Array-of RunningInstance} = {{Array-of RunningInstance}}
 }
 
-|| Handler for EC2 error parsing
-{define-class EC2ErrorHandler {inherits DefaultHandler}
-  field package-get private-set ec2-errors:{Array-of EC2Error}
-  field private ec2-error:EC2Error
+{define-class public Group
+  field public-get package-set group-id:String = ""
+}
+
+{define-class public RunningInstance
+  field public-get package-set instance-id:String = ""
+  field public-get package-set image-id:String = ""
+  field public-get package-set instance-state:InstanceState = {InstanceState}
+  field public-get package-set ami-launch-index:String = ""
+  field public-get package-set instance-type:String = ""
+  field public-get package-set launch-time:String = ""
+  field public-get package-set placement:PlacementResponse = {PlacementResponse}
+}
+
+{define-class public InstanceState
+  field public-get package-set code:String = ""
+  field public-get package-set name:String = ""
+}
+
+{define-class public PlacementResponse
+  field public-get package-set availability-zone:String = ""
+}
+
+|| Handler for RunInstancesResponse parsing
+{define-class package RunInstancesResponseHandler {inherits DefaultHandler}
+  field package-get private-set run-instances-response:RunInstancesResponse
   field private data:StringBuf
+  field private group-set-started?:bool
+  field private instances-set-started?:bool
   
   {constructor package {default}
-    set self.ec2-errors = {{Array-of EC2Error}}
-    set self.ec2-error = {EC2Error}
+    set self.run-instances-response = {RunInstancesResponse}
     set self.data = {StringBuf}
+    set self.group-set-started? = false
+    set self.instances-set-started? = false
     {construct-super}
   }
   
   {method public {start-document}:void
   }
   
-  {method public {start-elemant
+  {method public {start-element
                      uri:String,
                      name:String,
                      qname:String,
@@ -107,10 +219,12 @@
     {self.data.clear}
     
     {switch name
-     case "Errors" do
-        set self.ec2-errors = {{Array-of EC2Error}}
-     case "Error" do
-        set self.ec2-error = {EC2Error}
+     case "groupSet" do
+        set self.group-set-started? = true
+        {self.run-instances-response.group-set.append {Group}}
+     case "instancesSet" do
+        set self.instances-set-started? = true
+        {self.run-instances-response.instance-set.append {RunningInstance}}
      else
         || do nothing
     }
@@ -131,29 +245,14 @@
                      qname:String
                  }:void
     {switch name
-     case "Code" do
-        set self.ec2-error.code = {self.data.to-String}
-     case "Message" do
-        set self.ec2-error.message = {self.data.to-String}
-     case "Error" do
-        {self.ec2-errors.append self.ec2-error}
-     else
-        || do nothing
+     case "requestId" do
+        set self.run-instances-response.request-id = {self.data.to-String}
+     case "reservationId" do
+        set self.run-instances-response.reservation-id = {self.data.to-String}
+     case "ownerId" do
+        set self.run-instances-response.owner-id = {self.data.to-String}
     }
+    
   }
   
-  {method public {end-document}:void
-  }
 }
-
-|| EC2 exception class
-{define-class public EC2Exception {inherits Exception}
-  field public-get private-set code:String
-  
-  {constructor public {default code:String, message:String}
-    set self.code = code
-    {construct-super message}
-  }
-}
-
-
