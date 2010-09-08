@@ -1,0 +1,70 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| Handler for availability zone parsing
+{define-class package AvailabilityZoneHandler {inherits DefaultHandler}
+  field package-get private-set availability-zones:{Array-of AvailabilityZone}
+  field private availability-zone:AvailabilityZone
+  field private data:StringBuf
+  
+  {constructor package {default}
+    set self.availability-zones = {{Array-of AvailabilityZone}}
+    set self.availability-zone = {AvailabilityZone}
+    set self.data = {StringBuf}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void
+  }
+  
+  {method public {start-element 
+                     uri:String, 
+                     name:String, 
+                     qname:String, 
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "availabilityZoneInfo" do
+        set self.availability-zones = {{Array-of AvailabilityZone}}
+     case "item" do
+        set self.availability-zone = {AvailabilityZone}
+     else
+        || do nothing
+    }
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {switch name
+     case "item" do
+        {self.availability-zones.append self.availability-zone}
+     case "zoneName" do
+        set self.availability-zone.zone-name = {self.data.to-String}
+     case "zoneState" do
+        set self.availability-zone.zone-state = {self.data.to-String}
+     case "regionName" do
+        set self.availability-zone.region-name = {self.data.to-String}
+     case "item" do
+        {self.availability-zones.append self.availability-zone}
+     else
+        || do nothing
+    }
+  }
+  
+  {method public {end-document}:void
+  }
+}

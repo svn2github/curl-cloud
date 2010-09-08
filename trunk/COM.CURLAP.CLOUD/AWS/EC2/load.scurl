@@ -3,11 +3,6 @@
 {package COM.CURLAP.CLOUD.AWS.EC2,
     {compiler-directives careful? = true}
 }
-{include "ec2-client.scurl"}
-{include "http-requester.scurl"}
-{include "query.scurl"}
-{include "sax-parser.scurl"}
-{include "signature-generator.scurl"}
 
 {import * from COM.CURLAP.CLOUD.AWS.S3.UTIL}
 {import * from CURL.IO.HTTP}
@@ -15,3 +10,12 @@
 {import * from CURL.XML.SAX.BASE}
 {import * from CURL.XML.SAX.HELPERS}
 {import * from CURL.XML.SAX.PARSER}
+
+{include "availability-zone-parser.scurl"}
+{include "ec2-client.scurl"}
+{include "ec2-data-types.scurl"}
+{include "error-parser.scurl"}
+{include "http-requester.scurl"}
+{include "instance-parser.scurl"}
+{include "query.scurl"}
+{include "signature-generator.scurl"}

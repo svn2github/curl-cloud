@@ -1,36 +1,36 @@
 
 {curl-file-attributes character-encoding = "utf8"}
 
-{define-class package Query
-  field package action:String
-  field package version:String
-  field package aws-access-key:String
-  field package timestamp:String
-  field package expires:String
-  field package signature:#String
-  field package signature-method:String
-  field package signature-version:String
-  
-  {constructor package {default
-                           action:String,
-                           version:String,
-                           aws-access-key:String,
-                           timestamp:String,
-                           expires:String,
-                           signature:#String,
-                           signature-method:String,
-                           signature-version:String
-                       }
-    set self.action = action
-    set self.version = version
-    set self.aws-access-key = aws-access-key
-    set self.timestamp = timestamp
-    set self.expires = expires
-    set self.signature = signature
-    set self.signature-method = signature-method
-    set self.signature-version = signature-version
-  }
-}
+||--{define-class package Query
+||--  field package action:String
+||--  field package version:String
+||--  field package aws-access-key:String
+||--  field package timestamp:String
+||--  field package expires:String
+||--  field package signature:#String
+||--  field package signature-method:String
+||--  field package signature-version:String
+||--  
+||--  {constructor package {default
+||--                           action:String,
+||--                           version:String,
+||--                           aws-access-key:String,
+||--                           timestamp:String,
+||--                           expires:String,
+||--                           signature:#String,
+||--                           signature-method:String,
+||--                           signature-version:String
+||--                       }
+||--    set self.action = action
+||--    set self.version = version
+||--    set self.aws-access-key = aws-access-key
+||--    set self.timestamp = timestamp
+||--    set self.expires = expires
+||--    set self.signature = signature
+||--    set self.signature-method = signature-method
+||--    set self.signature-version = signature-version
+||--  }
+||--}
 
 
 

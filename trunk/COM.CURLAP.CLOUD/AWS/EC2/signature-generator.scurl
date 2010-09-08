@@ -11,11 +11,11 @@
     {query-parameters.sort}
     let string-to-sign:String = "GET\nec2.amazonaws.com\n/\n"
     {unless query-parameters.empty? do
-        {set string-to-sign = string-to-sign & {query-parameters.get 0}}
+        {set string-to-sign = {format "%s%s", string-to-sign, {query-parameters.get 0}}}
         {query-parameters.remove 0}
     }
     {until query-parameters.empty? do
-        {set string-to-sign = string-to-sign & "&" & {query-parameters.get 0}}
+        {set string-to-sign = {format "%s&%s", string-to-sign, {query-parameters.get 0}}}
         {query-parameters.remove 0}
     }
     def signature = {base64-encode

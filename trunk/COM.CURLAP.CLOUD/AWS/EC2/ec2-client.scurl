@@ -14,141 +14,96 @@
     set self.secret-key = secret-key
   }
   
-  || Get current date and time in the URL-encoded ISO 8601 format.
-  {method private {get-timestamp}:String
-    let time:DateTime = {DateTime zone = DateTimeZone.utc}
-    let timestamp:String = time.info.iso-date & "T" & time.info.iso-time & "Z"
-    set timestamp = {url-encode-filename timestamp}
-    set timestamp = {timestamp.to-upper-clone}
-    {return timestamp}
-  }
-  
-  {method private {get-common-query-parameters}:{Array-of String}
-    {return {{Array-of String}
-                "Version=2010-06-15",
-                "AWSAccessKeyId=" & self.access-key,
-                "Timestamp=" & {self.get-timestamp},
-                "SignatureMethod=HmacSHA1",
-                "SignatureVersion=2"
-            }
-    }
-  }
-  
   || Describe Availability Zones
   {method public {describe-availability-zones zone-names:{Array-of String}}:{Array-of AvailabilityZone}
-    def query-parameters = {{Array-of String}
-                               "Action=DescribeAvailabilityZones",
-                               "Version=2010-06-15",
-                               "AWSAccessKeyId=" & self.access-key,
-||++                           "ZoneName.1=us-east-1a",
-||++                           "ZoneName.2=us-east-1c",
-                               "Timestamp=" & {self.get-timestamp},
-                               "SignatureMethod=HmacSHA1",
-                               "SignatureVersion=2"
-                           }
+    def request-parameters = {{Array-of String} "Action=DescribeAvailabilityZones"}
     let i:int = 1
     {for zone-name in zone-names do
-        {query-parameters.append "ZoneName." & i & "=" & zone-name}
+        {request-parameters.append {format "ZoneName.%d=%s", i, zone-name}}
         set i = i + 1
     }
     {try
-        def ec2-response = {self.http-requester.request-ec2 query-parameters, self.secret-key}
-        {switch ec2-response.response-headers.status
-         || FIXME : Cannot receive XML when response header status is 401
-         case 400, 401, 403, 404, 409 do
-            let ec2-error-parser:SAXParser = {SAXParser}
-            let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
-            {ec2-error-parser.set-content-handler ec2-error-handler}
-            {ec2-error-parser.set-error-handler ec2-error-handler}       
-            {ec2-error-parser.parse {InputSource character-stream = ec2-response}}
-            def error = ec2-error-handler.ec2-errors[0]
-            {throw {EC2Exception error.code, error.message}}
-         else
-            let availability-zone-parser:SAXParser = {SAXParser}
-            let availability-zone-handler:AvailabilityZoneHandler = {AvailabilityZoneHandler}
-            {availability-zone-parser.set-content-handler availability-zone-handler}
-            {availability-zone-parser.set-error-handler availability-zone-handler}
-            {def is = {InputSource character-stream = ec2-response}}
-            {availability-zone-parser.parse is}
-            {return availability-zone-handler.availability-zones}
-        }
-     catch e:HttpException do
-        {throw e}
+        def response = {self.http-requester.request
+                               request-parameters,
+                               self.access-key,
+                               self.secret-key
+                           }
+        let availability-zone-parser:SAXParser = {SAXParser}
+        let availability-zone-handler:AvailabilityZoneHandler = {AvailabilityZoneHandler}
+        {availability-zone-parser.set-content-handler availability-zone-handler}
+        {availability-zone-parser.set-error-handler availability-zone-handler}
+        def input-stream = {InputSource character-stream = response}
+        {availability-zone-parser.parse input-stream}
+        {return availability-zone-handler.availability-zones}
+     catch ec2-e:EC2Exception do
+        {throw ec2-e}
+     catch e:Exception do
+        {throw {EC2Exception "Exception", e.message}}
     }
   }
   
-  {method public {run-instances}:void
-    let query-parameters:{Array-of String} = {self.get-common-query-parameters}
-    {query-parameters.append "Action=RunInstances"}
-    {query-parameters.append "ImageId=ami-b232d0db"}
-    {query-parameters.append "MinCount=1"}
-    {query-parameters.append "MaxCount=1"}
+  {method public {run-instances
+                     image-id:String,
+                     min-count:int,
+                     max-count:int
+                 }:RunInstancesResponse
+    def request-parameters ={{Array-of String}
+                                "Action=RunInstances",
+                                {format "ImageId=%s", image-id},
+                                {format "MinCount=%d", min-count},
+                                {format "MaxCount=%d", max-count}
+                            }
     {try
-        def ec2-response = {self.http-requester.request-ec2 query-parameters, self.secret-key}
-        {switch ec2-response.response-headers.status
-            || FIXME : Cannot receive XML when response header status is 401
-         case 400, 401, 403, 404, 409 do
-            let ec2-error-parser:SAXParser = {SAXParser}
-            let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
-            {ec2-error-parser.set-content-handler ec2-error-handler}
-            {ec2-error-parser.set-error-handler ec2-error-handler}       
-            {ec2-error-parser.parse {InputSource character-stream = ec2-response}}
-            def error = ec2-error-handler.ec2-errors[0]
-            {throw {EC2Exception error.code, error.message}}
-         else
-            || do nothing
-        }
-     catch e:HttpException do
-        {throw e}
+        def response = {self.http-requester.request
+                               request-parameters,
+                               self.access-key,
+                               self.secret-key
+                           }
+        let run-instances-parser:SAXParser = {SAXParser}
+        let run-instances-handler:RunInstancesResponseHandler = {RunInstancesResponseHandler}
+        {run-instances-parser.set-content-handler run-instances-handler}
+        {run-instances-parser.set-error-handler run-instances-handler}
+        def input-stream = {InputSource character-stream = response}
+        {run-instances-parser.parse input-stream}
+        {return run-instances-handler.run-instances-response}
+     catch ec2-e:EC2Exception do
+        {throw ec2-e}
+     catch e:Exception do
+        {throw {EC2Exception "Exception", e.message}}
     }
   }
   
-  {method public {terminate-instances instance-id:String}:void
-    let query-parameters:{Array-of String} = {self.get-common-query-parameters}
-    {query-parameters.append "Action=TerminateInstances"}
-    {query-parameters.append "InstanceId=" & instance-id}
+  {method public {terminate-instances instance-id:String}:#HttpTextInputStream
+    def request-parameters = {{Array-of String}
+                                 "Action=TerminateInstances",
+                                 {format "InstanceId=%s", instance-id}
+                             }
     {try
-        def ec2-response = {self.http-requester.request-ec2 query-parameters, self.secret-key}
-        {switch ec2-response.response-headers.status
-            || FIXME : Cannot receive XML when response header status is 401
-         case 400, 401, 403, 404, 409 do
-            let ec2-error-parser:SAXParser = {SAXParser}
-            let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
-            {ec2-error-parser.set-content-handler ec2-error-handler}
-            {ec2-error-parser.set-error-handler ec2-error-handler}       
-            {ec2-error-parser.parse {InputSource character-stream = ec2-response}}
-            def error = ec2-error-handler.ec2-errors[0]
-            {throw {EC2Exception error.code, error.message}}
-         else
-            || do nothing
-        }
-     catch e:HttpException do
-        {throw e}
+        def response = {self.http-requester.request
+                               request-parameters,
+                               self.access-key,
+                               self.secret-key
+                           }
+        {return response}
+     catch ec2-e:EC2Exception do
+        {throw ec2-e}
+     catch e:Exception do
+        {throw {EC2Exception "Exception", e.message}}
     }
   }
   
   {method public {describe-instances}:void
-    let query-parameters:{Array-of String} = {self.get-common-query-parameters}
-    {query-parameters.append "Action=DescribeInstances"}
+    def request-parameters = {{Array-of String} "Action=DescribeInstances"}
     {try
-        def ec2-response = {self.http-requester.request-ec2 query-parameters, self.secret-key}
-        {switch ec2-response.response-headers.status
-            || FIXME : Cannot receive XML when response header status is 401
-         case 400, 401, 403, 404, 409 do
-            let ec2-error-parser:SAXParser = {SAXParser}
-            let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
-            {ec2-error-parser.set-content-handler ec2-error-handler}
-            {ec2-error-parser.set-error-handler ec2-error-handler}       
-            {ec2-error-parser.parse {InputSource character-stream = ec2-response}}
-            def error = ec2-error-handler.ec2-errors[0]
-            {throw {EC2Exception error.code, error.message}}
-         else
-            {dump
-                {ec2-response.read-one-string}
-            }
-        }
-     catch e:HttpException do
-        {throw e}
+        def response = {self.http-requester.request
+                               request-parameters,
+                               self.access-key,
+                               self.secret-key
+                           }
+     catch ec2-e:EC2Exception do
+        {throw ec2-e}
+     catch e:Exception do
+        {throw {EC2Exception "Exception", e.message}}
     }
   }
 }

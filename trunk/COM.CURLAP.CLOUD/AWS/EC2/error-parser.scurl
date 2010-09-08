@@ -1,0 +1,80 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| Error information
+{define-class public EC2Error
+  field public-get package-set code:String = ""
+  field public-get package-set message:String = ""
+}
+
+|| Handler for EC2 error parsing
+{define-class package EC2ErrorHandler {inherits DefaultHandler}
+  field package-get private-set ec2-errors:{Array-of EC2Error}
+  field private data:StringBuf
+  
+  {constructor package {default}
+    set self.ec2-errors = {{Array-of EC2Error}}
+    set self.data = {StringBuf}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "Errors" do
+        || skip
+     case "Error" do
+        {self.ec2-errors.append {EC2Error}}
+     else
+        || do nothing
+    }
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {switch name
+     case "Code" do
+        set self.ec2-errors[self.ec2-errors.size - 1].code = {self.data.to-String}
+     case "Message" do
+        set self.ec2-errors[self.ec2-errors.size - 1].message = {self.data.to-String}
+     case "Error" do
+        || skip
+     else
+        || do nothing
+    }
+  }
+  
+  {method public {end-document}:void
+  }
+}
+
+|| EC2 exception class
+{define-class public EC2Exception {inherits Exception}
+  field public-get private-set code:String
+  
+  {constructor public {default code:String, message:String}
+    set self.code = code
+    {construct-super message}
+  }
+}
