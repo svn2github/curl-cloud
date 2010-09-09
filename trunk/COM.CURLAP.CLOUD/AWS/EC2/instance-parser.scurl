@@ -1,208 +1,94 @@
 
 {curl-file-attributes character-encoding = "utf8"}
 
-|| Handler to parse a RunInstances response
-{define-class package RunInstancesResponseHandler {inherits DefaultHandler}
-  field package-get private-set run-instances-response:RunInstancesResponse
-  field private data:StringBuf
-  field private tag-stack:{Array-of String}
-      
-  {constructor package {default}
-    set self.run-instances-response = {RunInstancesResponse}
-    set self.data = {StringBuf}
-    set self.tag-stack = {{Array-of String}}
-    {construct-super}
-  }
-  
-  {method public {start-document}:void
-  }
-  
-  {method public {start-element
-                     uri:String,
-                     name:String,
-                     qname:String,
-                     atts:Attributes
-                 }:void
-    {self.data.clear}
-    
+|| Procedure to parse a running instance
+|| This is used by RunInstancesResponseHandler and DescribeInstancesResponseHandler.
+{define-proc package {parse-running-instance
+                         instance:RunningInstance,
+                         tag-stack:{Array-of String},
+                         data:StringBuf,
+                         name:String
+                     }:void
+    def block-device-mapping-tail = instance.block-device-mapping.size - 1
     {switch name
-     case "item" do
-        {switch {self.tag-stack.top-of-stack}
-         case "groupSet" do
-            {self.run-instances-response.group-set.append {Group}}
-         case "instancesSet" do
-            {self.run-instances-response.instances-set.append {RunningInstance}}
-         case "blockDeviceMapping" do
-            def instances-tail = self.run-instances-response.instances-set.size - 1
-            {self.run-instances-response.instances-set[instances-tail].block-device-mapping.append {InstanceBlockDeviceMapping}}
-         else
-            || do nothing
-        }
-    }
-    {self.tag-stack.push name}
-  }
-    
-  
-  {method public {characters
-                     ch:StringBuf,
-                     start:int,
-                     length:int
-                 }:void
-    {self.data.clear}
-    {self.data.concat {ch.substr start, length}}
-  }
-  
-  {method public {end-element
-                     uri:String,
-                     name:String,
-                     qname:String
-                 }:void
-    {self.tag-stack.pop}
-    def group-tail = self.run-instances-response.group-set.size - 1
-    def instances-tail = self.run-instances-response.instances-set.size - 1
-    {switch name
-     case "requestId" do
-        set self.run-instances-response.request-id = {self.data.to-String}
-     case "reservationId" do
-        set self.run-instances-response.reservation-id = {self.data.to-String}
-     case "ownerId" do
-        set self.run-instances-response.owner-id = {self.data.to-String}
-     case "groupId" do
-        set self.run-instances-response.group-set[group-tail].group-id = {self.data.to-String}
      case "instanceId" do
-        set self.run-instances-response.instances-set[instances-tail].instance-id = {self.data.to-String}
+        set instance.instance-id = {data.to-String}
      case "imageId" do
-        set self.run-instances-response.instances-set[instances-tail].image-id = {self.data.to-String}
+        set instance.image-id = {data.to-String}
      case "code" do
-        {switch {self.tag-stack.top-of-stack}
+        {switch {tag-stack.top-of-stack}
          case "instanceState" do
-            set self.run-instances-response.instances-set[instances-tail].instance-state.code = {self.data.to-int}
+            set instance.instance-state.code = {data.to-int}
          case "stateReason" do
-            set self.run-instances-response.instances-set[instances-tail].state-reason.code = {self.data.to-String}
+            set instance.state-reason.code = {data.to-String}
         }
      case "name" do
-        set self.run-instances-response.instances-set[instances-tail].instance-state.name = {self.data.to-String}
+        set instance.instance-state.name = {data.to-String}
+     case "privateDnsName" do
+        set instance.private-dns-name = {data.to-String}
+     case "dnsName" do
+        set instance.dns-name = {data.to-String}
+     case "reason" do
+        set instance.reason = {data.to-String}
+     case "keyName" do
+        set instance.key-name = {data.to-String}
      case "amiLaunchIndex" do
-        set self.run-instances-response.instances-set[instances-tail].ami-launch-index = {self.data.to-String}
+        set instance.ami-launch-index = {data.to-String}
+     case "productCode" do
+        set instance.product-codes[instance.product-codes.size - 1].product-code = {data.to-String}
      case "instanceType" do
-        set self.run-instances-response.instances-set[instances-tail].instance-type = {self.data.to-String}
+        set instance.instance-type = {data.to-String}
      case "launchTime" do
-        set self.run-instances-response.instances-set[instances-tail].launch-time = {self.data.to-String}
+        set instance.launch-time = {DateTime {data.to-String}}
      case "availabilityZone" do
-        set self.run-instances-response.instances-set[instances-tail].placement.availability-zone = {self.data.to-String}
-     case "kirnelId" do
-        set self.run-instances-response.instances-set[instances-tail].kirnel-id = {self.data.to-String}
+        set instance.placement.availability-zone = {data.to-String}
+     case "kernelId" do
+        set instance.kernel-id = {data.to-String}
      case "ramdiskId" do
-        set self.run-instances-response.instances-set[instances-tail].ramdisk-id = {self.data.to-String}
-     case "monitoring" do
-        set self.run-instances-response.instances-set[instances-tail].monitoring.state = {self.data.to-String}
+        set instance.ramdisk-id = {data.to-String}
+     case "state" do
+        set instance.monitoring.state = {data.to-String}
+     case "privateIpAddress" do
+        set instance.private-ip-address = {data.to-String}
+     case "ipAddress" do
+        set instance.ip-address = {data.to-String}
      case "message" do
-        set self.run-instances-response.instances-set[instances-tail].state-reason.message = {self.data.to-String}
+        set instance.state-reason.message = {data.to-String}
+     case "architecture" do
+        set instance.architecture = {data.to-String}
      case "rootDeviceType" do
-        set self.run-instances-response.instances-set[instances-tail].root-device-type = {self.data.to-String}
+        set instance.root-device-type = {data.to-String}
      case "rootDeviceName" do
-        set self.run-instances-response.instances-set[instances-tail].root-device-name = {self.data.to-String}
+        set instance.root-device-name = {data.to-String}
      case "deviceName" do
-        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
-        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].device-name = {self.data.to-String}
+        set instance.block-device-mapping[block-device-mapping-tail].device-name = {data.to-String}
      case "volumeId" do
-        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
-        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.volume-id = {self.data.to-String}
+        set instance.block-device-mapping[block-device-mapping-tail].ebs.volume-id = {data.to-String}
      case "status" do
-        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
-        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.status = {self.data.to-String}
+        set instance.block-device-mapping[block-device-mapping-tail].ebs.status = {data.to-String}
      case "attachTime" do
-        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
-        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.attach-time = {DateTime {self.data.to-String}}
+        set instance.block-device-mapping[block-device-mapping-tail].ebs.attach-time = {DateTime {data.to-String}}
      case "deleteOnTermination" do
-        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
-        {if {self.data.to-String} == "true" then
-            set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = true
+        {if {data.to-String} == "true" then
+            set instance.block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = true
          else
-            set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = false
+            set instance.block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = false
         }
+     case "instanceLifecycle" do
+        set instance.instance-life-cycle = {data.to-String}
+     case "spotInstanceRequestId" do
+        set instance.spot-instance-request-id = {data.to-String}
      case "virtualizationType" do
-        set self.run-instances-response.instances-set[instances-tail].virtualization-type = {self.data.to-String}
+        set instance.virtualization-type = {data.to-String}
+     case "platform" do
+        set instance.platform = {data.to-String}
+     case "subnetId" do
+        set instance.subnet-id = {data.to-String}
+     case "vpcId" do
+        set instance.vpc-id = {data.to-String}
     }
-  }
-  
-  {method public {end-document}:void
-  }
 }
 
-|| Handler to parse a TerminateInstances response
-{define-class package TerminateInstancesResponseHandler {inherits DefaultHandler}
-  field package-get private-set terminate-instances-response:TerminateInstancesResponse
-  field private data:StringBuf
-  field private tag-stack:{Array-of String}
-  
-  {constructor package {default}
-    set self.terminate-instances-response = {TerminateInstancesResponse}
-    set self.data = {StringBuf}
-    set self.tag-stack = {{Array-of String}}
-    {construct-super}
-  }
-  
-  {method public {start-document}:void
-  }
-  
-  {method public {start-element
-                     uri:String,
-                     name:String,
-                     qname:String,
-                     atts:Attributes
-                 }:void
-    {self.data.clear}
-    
-    {switch name
-     case "item" do
-        {self.terminate-instances-response.instances-set.append {InstanceStateChange}}
-     else
-        || do nothing
-    }
-    {self.tag-stack.push name}
-  }
-  
-  {method public {characters
-                     ch:StringBuf,
-                     start:int,
-                     length:int
-                 }:void
-    {self.data.clear}
-    {self.data.concat {ch.substr start, length}}
-  }
-  
-  {method public {end-element
-                     uri:String,
-                     name:String,
-                     qname:String
-                 }:void
-    {self.tag-stack.pop}
-    def instances-tail = self.terminate-instances-response.instances-set.size - 1
-    {switch name
-     case "requestId" do
-        set self.terminate-instances-response.request-id = {self.data.to-String}
-     case "instanceId" do
-        set self.terminate-instances-response.instances-set[instances-tail].instance-id = {self.data.to-String}
-     case "code" do
-        {switch {self.tag-stack.top-of-stack}
-         case "currentState" do
-            set self.terminate-instances-response.instances-set[instances-tail].cuurent-state.code = {self.data.to-int}
-         case "previousState" do
-            set self.terminate-instances-response.instances-set[instances-tail].previous-state.code = {self.data.to-int}
-        }
-     case "name" do
-        {switch {self.tag-stack.top-of-stack}
-         case "currentState" do
-            set self.terminate-instances-response.instances-set[instances-tail].cuurent-state.name = {self.data.to-String}
-         case "previousState" do
-            set self.terminate-instances-response.instances-set[instances-tail].previous-state.name = {self.data.to-String}
-        }
-    }
-  }
-  
-  {method public {end-document}:void
-  }
-}
+
 
 

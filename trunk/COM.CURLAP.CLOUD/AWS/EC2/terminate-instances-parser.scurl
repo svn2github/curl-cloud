@@ -1,0 +1,77 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| Handler to parse a TerminateInstances response
+{define-class package TerminateInstancesResponseHandler {inherits DefaultHandler}
+  field package-get private-set terminate-instances-response:TerminateInstancesResponse
+  field private data:StringBuf
+  field private tag-stack:{Array-of String}
+  
+  {constructor package {default}
+    set self.terminate-instances-response = {TerminateInstancesResponse}
+    set self.data = {StringBuf}
+    set self.tag-stack = {{Array-of String}}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "item" do
+        {self.terminate-instances-response.instances-set.append {InstanceStateChange}}
+     else
+        || do nothing
+    }
+    {self.tag-stack.push name}
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {self.tag-stack.pop}
+    def instances-tail = self.terminate-instances-response.instances-set.size - 1
+    {switch name
+     case "requestId" do
+        set self.terminate-instances-response.request-id = {self.data.to-String}
+     case "instanceId" do
+        set self.terminate-instances-response.instances-set[instances-tail].instance-id = {self.data.to-String}
+     case "code" do
+        {switch {self.tag-stack.top-of-stack}
+         case "currentState" do
+            set self.terminate-instances-response.instances-set[instances-tail].cuurent-state.code = {self.data.to-int}
+         case "previousState" do
+            set self.terminate-instances-response.instances-set[instances-tail].previous-state.code = {self.data.to-int}
+        }
+     case "name" do
+        {switch {self.tag-stack.top-of-stack}
+         case "currentState" do
+            set self.terminate-instances-response.instances-set[instances-tail].cuurent-state.name = {self.data.to-String}
+         case "previousState" do
+            set self.terminate-instances-response.instances-set[instances-tail].previous-state.name = {self.data.to-String}
+        }
+    }
+  }
+  
+  {method public {end-document}:void
+  }
+}

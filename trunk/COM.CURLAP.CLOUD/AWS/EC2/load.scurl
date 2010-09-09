@@ -12,10 +12,13 @@
 {import * from CURL.XML.SAX.PARSER}
 
 {include "availability-zone-parser.scurl"}
+{include "describe-instances-parser.scurl"}
 {include "ec2-client.scurl"}
 {include "ec2-data-types.scurl"}
 {include "error-parser.scurl"}
 {include "http-requester.scurl"}
 {include "instance-parser.scurl"}
 {include "query.scurl"}
+{include "run-instances-parser.scurl"}
 {include "signature-generator.scurl"}
+{include "terminate-instances-parser.scurl"}

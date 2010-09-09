@@ -1,0 +1,133 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| Handler to parse a RunInstances response
+{define-class package RunInstancesResponseHandler {inherits DefaultHandler}
+  field package-get private-set run-instances-response:RunInstancesResponse
+  field private data:StringBuf
+  field private tag-stack:{Array-of String}
+  
+  {constructor package {default}
+    set self.run-instances-response = {RunInstancesResponse}
+    set self.data = {StringBuf}
+    set self.tag-stack = {{Array-of String}}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "item" do
+        {switch {self.tag-stack.top-of-stack}
+         case "groupSet" do
+            {self.run-instances-response.group-set.append {Group}}
+         case "instancesSet" do
+            {self.run-instances-response.instances-set.append {RunningInstance}}
+         case "productCodes" do
+            def instances-tail = self.run-instances-response.instances-set.size - 1
+            {self.run-instances-response.instances-set[instances-tail].product-codes.append {ProductCode}}
+         case "blockDeviceMapping" do
+            def instances-tail = self.run-instances-response.instances-set.size - 1
+            {self.run-instances-response.instances-set[instances-tail].block-device-mapping.append {InstanceBlockDeviceMapping}}
+         else
+            || do nothing
+        }
+    }
+    {self.tag-stack.push name}
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {self.tag-stack.pop}
+    def group-tail = self.run-instances-response.group-set.size - 1
+    def instances-tail = self.run-instances-response.instances-set.size - 1
+    {switch name
+     case "requestId" do
+        set self.run-instances-response.request-id = {self.data.to-String}
+     case "reservationId" do
+        set self.run-instances-response.reservation-id = {self.data.to-String}
+     case "ownerId" do
+        set self.run-instances-response.owner-id = {self.data.to-String}
+     case "groupId" do
+        set self.run-instances-response.group-set[group-tail].group-id = {self.data.to-String}
+     case "instanceId" do
+        set self.run-instances-response.instances-set[instances-tail].instance-id = {self.data.to-String}
+     case "imageId" do
+        set self.run-instances-response.instances-set[instances-tail].image-id = {self.data.to-String}
+     case "code" do
+        {switch {self.tag-stack.top-of-stack}
+         case "instanceState" do
+            set self.run-instances-response.instances-set[instances-tail].instance-state.code = {self.data.to-int}
+         case "stateReason" do
+            set self.run-instances-response.instances-set[instances-tail].state-reason.code = {self.data.to-String}
+        }
+     case "name" do
+        set self.run-instances-response.instances-set[instances-tail].instance-state.name = {self.data.to-String}
+     case "amiLaunchIndex" do
+        set self.run-instances-response.instances-set[instances-tail].ami-launch-index = {self.data.to-String}
+     case "instanceType" do
+        set self.run-instances-response.instances-set[instances-tail].instance-type = {self.data.to-String}
+     case "launchTime" do
+        set self.run-instances-response.instances-set[instances-tail].launch-time = {DateTime {self.data.to-String}}
+     case "availabilityZone" do
+        set self.run-instances-response.instances-set[instances-tail].placement.availability-zone = {self.data.to-String}
+     case "kernelId" do
+        set self.run-instances-response.instances-set[instances-tail].kernel-id = {self.data.to-String}
+     case "ramdiskId" do
+        set self.run-instances-response.instances-set[instances-tail].ramdisk-id = {self.data.to-String}
+     case "monitoring" do
+        set self.run-instances-response.instances-set[instances-tail].monitoring.state = {self.data.to-String}
+     case "message" do
+        set self.run-instances-response.instances-set[instances-tail].state-reason.message = {self.data.to-String}
+     case "rootDeviceType" do
+        set self.run-instances-response.instances-set[instances-tail].root-device-type = {self.data.to-String}
+     case "rootDeviceName" do
+        set self.run-instances-response.instances-set[instances-tail].root-device-name = {self.data.to-String}
+     case "deviceName" do
+        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
+        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].device-name = {self.data.to-String}
+     case "volumeId" do
+        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
+        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.volume-id = {self.data.to-String}
+     case "status" do
+        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
+        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.status = {self.data.to-String}
+     case "attachTime" do
+        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
+        set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.attach-time = {DateTime {self.data.to-String}}
+     case "deleteOnTermination" do
+        def block-device-mapping-tail = self.run-instances-response.instances-set[instances-tail].block-device-mapping.size - 1
+        {if {self.data.to-String} == "true" then
+            set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = true
+         else
+            set self.run-instances-response.instances-set[instances-tail].block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = false
+        }
+     case "virtualizationType" do
+        set self.run-instances-response.instances-set[instances-tail].virtualization-type = {self.data.to-String}
+    }
+  }
+  
+  {method public {end-document}:void
+  }
+}

@@ -98,14 +98,21 @@
     }
   }
   
-  {method public {describe-instances}:void
+  {method public {describe-instances}:DescribeInstancesResponse
     def request-parameters = {{Array-of String} "Action=DescribeInstances"}
     {try
         def response = {self.http-requester.request
                                request-parameters,
                                self.access-key,
                                self.secret-key
-                           }
+                       }
+        let describe-instances-parser:SAXParser = {SAXParser}
+        let describe-instances-handler:DescribeInstancesResponseHandler = {DescribeInstancesResponseHandler}
+        {describe-instances-parser.set-content-handler describe-instances-handler}
+        {describe-instances-parser.set-error-handler describe-instances-handler}
+        def input-stream = {InputSource character-stream = response}
+        {describe-instances-parser.parse input-stream}
+        {return describe-instances-handler.describe-instances-response}
      catch ec2-e:EC2Exception do
         {throw ec2-e}
      catch e:Exception do

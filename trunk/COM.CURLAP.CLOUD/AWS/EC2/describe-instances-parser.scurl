@@ -1,0 +1,93 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| Handler to parse a DescribeInstances response
+{define-class package DescribeInstancesResponseHandler {inherits DefaultHandler}
+  field package-get private-set describe-instances-response:DescribeInstancesResponse
+  field private data:StringBuf
+  field private tag-stack:{Array-of String}
+  
+  {constructor package {default}
+    set self.describe-instances-response = {DescribeInstancesResponse}
+    set self.data = {StringBuf}
+    set self.tag-stack = {{Array-of String}}
+    {construct-super}
+  }
+  
+  {method public {start-document}:void
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "item" do
+        {switch {self.tag-stack.top-of-stack}
+         case "reservationSet" do
+            {self.describe-instances-response.reservation-set.append {Reservation}}
+         case "groupSet" do
+            def reservation-tail = self.describe-instances-response.reservation-set.size - 1
+            {self.describe-instances-response.reservation-set[reservation-tail].group-set.append {Group}}
+         case "instancesSet" do
+            def reservation-tail = self.describe-instances-response.reservation-set.size - 1
+            {self.describe-instances-response.reservation-set[reservation-tail].instances-set.append {RunningInstance}}
+         case "productCodes" do
+            def reservation-tail = self.describe-instances-response.reservation-set.size - 1
+            def instances-tail = self.describe-instances-response.reservation-set[reservation-tail].instances-set.size - 1
+            {self.describe-instances-response.reservation-set[reservation-tail].instances-set[instances-tail].product-codes.append {ProductCode}}
+         case "blockDeviceMapping" do
+            def reservation-tail = self.describe-instances-response.reservation-set.size - 1
+            def instances-tail = self.describe-instances-response.reservation-set[reservation-tail].instances-set.size - 1
+            {self.describe-instances-response.reservation-set[reservation-tail].instances-set[instances-tail].block-device-mapping.append {InstanceBlockDeviceMapping}}
+        }
+    }
+    {self.tag-stack.push name}
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {self.tag-stack.pop}
+    
+    {if {self.tag-stack.find "instancesSet"} >= 0 then
+        def reservation-tail = self.describe-instances-response.reservation-set.size - 1
+        def instances-tail = self.describe-instances-response.reservation-set[reservation-tail].instances-set.size - 1
+        {parse-running-instance
+            self.describe-instances-response.reservation-set[reservation-tail].instances-set[instances-tail],
+            self.tag-stack,
+            self.data,
+            name
+        }
+     else
+        {switch name
+         case "requestId" do
+            set self.describe-instances-response.request-id = {self.data.to-String}
+         case "reservationId" do
+            set self.describe-instances-response.reservation-tail.reservation-id = {self.data.to-String}
+         case "ownerId" do
+            set self.describe-instances-response.reservation-tail.owner-id = {self.data.to-String}
+         case "groupId" do
+            set self.describe-instances-response.reservation-tail.group-tail.group-id = {self.data.to-String}
+        }
+    }
+  }
+  
+  {method public {end-document}:void
+  }
+}
