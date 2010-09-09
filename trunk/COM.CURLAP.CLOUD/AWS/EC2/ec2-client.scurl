@@ -73,7 +73,7 @@
     }
   }
   
-  {method public {terminate-instances instance-id:String}:#HttpTextInputStream
+  {method public {terminate-instances instance-id:String}:TerminateInstancesResponse
     def request-parameters = {{Array-of String}
                                  "Action=TerminateInstances",
                                  {format "InstanceId=%s", instance-id}
@@ -83,8 +83,14 @@
                                request-parameters,
                                self.access-key,
                                self.secret-key
-                           }
-        {return response}
+                       }
+        let terminate-instances-parser:SAXParser = {SAXParser}
+        let terminate-instances-handler:TerminateInstancesResponseHandler = {TerminateInstancesResponseHandler}
+        {terminate-instances-parser.set-content-handler terminate-instances-handler}
+        {terminate-instances-parser.set-error-handler terminate-instances-handler}
+        def input-stream = {InputSource character-stream = response}
+        {terminate-instances-parser.parse input-stream}
+        {return terminate-instances-handler.terminate-instances-response}
      catch ec2-e:EC2Exception do
         {throw ec2-e}
      catch e:Exception do
