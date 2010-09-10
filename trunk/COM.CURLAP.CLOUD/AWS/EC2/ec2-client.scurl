@@ -15,19 +15,24 @@
   }
   
   || Describe Availability Zones
-  {method public {describe-availability-zones zone-names:{Array-of String}}:{Array-of AvailabilityZone}
+  {method public {describe-availability-zones
+                     zone-names:#{Array-of String} = null
+                 }:{Array-of AvailabilityZone}
     def request-parameters = {{Array-of String} "Action=DescribeAvailabilityZones"}
     let i:int = 1
-    {for zone-name in zone-names do
-        {request-parameters.append {format "ZoneName.%d=%s", i, zone-name}}
-        set i = i + 1
+    {if-non-null zone-names then
+        {for zone-name in zone-names do
+            {request-parameters.append {format "ZoneName.%d=%s", i, zone-name}}
+            set i = i + 1
+        }
     }
+    let response:#HttpTextInputStream
     {try
-        def response = {self.http-requester.request
-                               request-parameters,
-                               self.access-key,
-                               self.secret-key
-                           }
+        set response = {self.http-requester.request
+                           request-parameters,
+                           self.access-key,
+                           self.secret-key
+                       }
         let availability-zone-parser:SAXParser = {SAXParser}
         let availability-zone-handler:AvailabilityZoneHandler = {AvailabilityZoneHandler}
         {availability-zone-parser.set-content-handler availability-zone-handler}
@@ -98,8 +103,17 @@
     }
   }
   
-  {method public {describe-instances}:DescribeInstancesResponse
+  {method public {describe-instances
+                     instance-ids:#{Array-of String} = null
+                 }:DescribeInstancesResponse
     def request-parameters = {{Array-of String} "Action=DescribeInstances"}
+    let i:int = 1
+    {if-non-null instance-ids then
+        {for instance-id in instance-ids do
+            {request-parameters.append {format "InstanceId.%d=%s", i, instance-id}}
+            set i = i + 1
+        }
+    }
     {try
         def response = {self.http-requester.request
                                request-parameters,
@@ -120,6 +134,3 @@
     }
   }
 }
-
-
-

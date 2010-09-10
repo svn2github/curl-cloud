@@ -42,9 +42,11 @@
     let http-file:HttpFile = {{abs-url request}.instantiate-File} asa HttpFile
     {try
         def response = {http-file.http-read-open always-return-response-headers? = true}
-        {switch response.response-headers.status
+        || If HTTP response status code is 2xx(Success), returns a HttpTextInputStream
+        {if response.response-headers.status / 100 == 2 then
+            {return response}
+         else
             || FIXME : Cannot receive XML when response header status is 401
-         case 400, 401, 403, 404, 409 do
             let ec2-error-parser:SAXParser = {SAXParser}
             let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
             {ec2-error-parser.set-content-handler ec2-error-handler}
@@ -52,11 +54,23 @@
             {ec2-error-parser.parse {InputSource character-stream = response}}
             def error = ec2-error-handler.ec2-errors[0]
             {throw {EC2Exception error.code, error.message}}
-         else
-            {return response}
         }
-     catch e:HttpException do
-        {throw {EC2Exception "HTTP Exception", e.message}}
+        
+||++    {switch response.response-headers.status
+||++        || FIXME : Cannot receive XML when response header status is 401
+||++     case 400, 401, 403, 404, 409 do
+||++        let ec2-error-parser:SAXParser = {SAXParser}
+||++        let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
+||++        {ec2-error-parser.set-content-handler ec2-error-handler}
+||++        {ec2-error-parser.set-error-handler ec2-error-handler}
+||++        {ec2-error-parser.parse {InputSource character-stream = response}}
+||++        def error = ec2-error-handler.ec2-errors[0]
+||++        {throw {EC2Exception error.code, error.message}}
+||++     else
+||++        {return response}
+||++    }
+||++ catch e:Exception do
+||++    {throw {EC2Exception "Request Exception", e.message}}
     }
   }
 }
