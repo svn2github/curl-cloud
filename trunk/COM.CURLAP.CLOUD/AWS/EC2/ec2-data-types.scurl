@@ -15,6 +15,14 @@
   field public-get package-set owner-id:String = ""
   field public-get package-set group-set:{Array-of Group} = {{Array-of Group}}
   field public-get package-set instances-set:{Array-of RunningInstance} = {{Array-of RunningInstance}}
+  
+  {getter public {instances-tail}:RunningInstance
+    {return self.instances-set[self.instances-set.size - 1]}
+  }
+  
+  {getter public {group-tail}:Group
+    {return self.group-set[self.group-set.size - 1]}
+  }
 }
 
 {define-class public Group
@@ -51,9 +59,9 @@
   field public-get package-set subnet-id:String = ""
   field public-get package-set vpc-id:String = ""
   
-||--  {getter package {block-device-mapping-tail}:InstanceBlockDeviceMapping
-||--    {return self.block-device-mapping[self.block-device-mapping.size - 1]}
-||--  }
+  {getter package {block-device-mapping-tail}:InstanceBlockDeviceMapping
+    {return self.block-device-mapping[self.block-device-mapping.size - 1]}
+  }
 }
 
 {define-class public InstanceState

@@ -9,7 +9,6 @@
                          data:StringBuf,
                          name:String
                      }:void
-    def block-device-mapping-tail = instance.block-device-mapping.size - 1
     {switch name
      case "instanceId" do
         set instance.instance-id = {data.to-String}
@@ -61,18 +60,18 @@
      case "rootDeviceName" do
         set instance.root-device-name = {data.to-String}
      case "deviceName" do
-        set instance.block-device-mapping[block-device-mapping-tail].device-name = {data.to-String}
+        set instance.block-device-mapping-tail.device-name = {data.to-String}
      case "volumeId" do
-        set instance.block-device-mapping[block-device-mapping-tail].ebs.volume-id = {data.to-String}
+        set instance.block-device-mapping-tail.ebs.volume-id = {data.to-String}
      case "status" do
-        set instance.block-device-mapping[block-device-mapping-tail].ebs.status = {data.to-String}
+        set instance.block-device-mapping-tail.ebs.status = {data.to-String}
      case "attachTime" do
-        set instance.block-device-mapping[block-device-mapping-tail].ebs.attach-time = {DateTime {data.to-String}}
+        set instance.block-device-mapping-tail.ebs.attach-time = {DateTime {data.to-String}}
      case "deleteOnTermination" do
         {if {data.to-String} == "true" then
-            set instance.block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = true
+            set instance.block-device-mapping-tail.ebs.delete-on-termination = true
          else
-            set instance.block-device-mapping[block-device-mapping-tail].ebs.delete-on-termination = false
+            set instance.block-device-mapping-tail.ebs.delete-on-termination = false
         }
      case "instanceLifecycle" do
         set instance.instance-life-cycle = {data.to-String}
@@ -88,7 +87,3 @@
         set instance.vpc-id = {data.to-String}
     }
 }
-
-
-
-

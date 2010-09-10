@@ -66,10 +66,8 @@
     {self.tag-stack.pop}
     
     {if {self.tag-stack.find "instancesSet"} >= 0 then
-        def reservation-tail = self.describe-instances-response.reservation-set.size - 1
-        def instances-tail = self.describe-instances-response.reservation-set[reservation-tail].instances-set.size - 1
         {parse-running-instance
-            self.describe-instances-response.reservation-set[reservation-tail].instances-set[instances-tail],
+            self.describe-instances-response.reservation-tail.instances-tail,
             self.tag-stack,
             self.data,
             name
