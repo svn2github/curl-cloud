@@ -47,10 +47,14 @@
     }
   }
   
+  || Run Instances
+  || ToDo : run-instances should receive more arguments
   {method public {run-instances
                      image-id:String,
                      min-count:int,
-                     max-count:int
+                     max-count:int,
+                     key-name:#String = null,
+                     security-group:#{Array-of String} = null
                  }:RunInstancesResponse
     def request-parameters ={{Array-of String}
                                 "Action=RunInstances",
@@ -58,6 +62,16 @@
                                 {format "MinCount=%d", min-count},
                                 {format "MaxCount=%d", max-count}
                             }
+    {if-non-null key-name then
+        {request-parameters.append {format "KeyName=%s", key-name}}
+    }
+    {if-non-null security-group then
+        let i:int = 1
+        {for name in security-group do
+            {request-parameters.append {format "SecurityGroup.%d=%s", i, name}}
+            set i = i + 1
+        }
+    }
     {try
         def response = {self.http-requester.request
                                request-parameters,
@@ -78,6 +92,7 @@
     }
   }
   
+  || Terminate Instances
   {method public {terminate-instances instance-id:String}:TerminateInstancesResponse
     def request-parameters = {{Array-of String}
                                  "Action=TerminateInstances",
@@ -103,6 +118,7 @@
     }
   }
   
+  || Describe Instances
   {method public {describe-instances
                      instance-ids:#{Array-of String} = null
                  }:DescribeInstancesResponse
