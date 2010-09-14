@@ -1,0 +1,12 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| GroupItemType
+{define-class public Group
+  
+  field public-get library-set group-id:String
+  
+  {constructor public {default group-id:String = ""}
+    set self.group-id = group-id
+  }
+}

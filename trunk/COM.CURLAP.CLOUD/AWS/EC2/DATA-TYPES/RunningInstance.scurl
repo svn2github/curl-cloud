@@ -1,0 +1,99 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| RunningInstancesItemType
+{define-class public RunningInstance
+  
+  field public-get library-set instance-id:String = ""
+  field public-get library-set image-id:String = ""
+  field public-get library-set instance-state:InstanceState = {InstanceState}
+  field public-get library-set private-dns-name:String = ""
+  field public-get library-set dns-name:String = ""
+  field public-get library-set reason:String = ""
+  field public-get library-set key-name:String = ""
+  field public-get library-set ami-launch-index:String = ""
+  field public-get library-set product-codes:{Array-of ProductCode} = {{Array-of ProductCode}}
+  field public-get library-set instance-type:String = ""
+  field public-get library-set launch-time:DateTime = {DateTime}
+  field public-get library-set placement:Placement = {Placement}
+  field public-get library-set kernel-id:String = ""
+  field public-get library-set ramdisk-id:String = ""
+  field public-get library-set monitoring:InstanceMonitoringState = {InstanceMonitoringState}
+  field public-get library-set private-ip-address:String = ""
+  field public-get library-set ip-address:String = ""
+  field public-get library-set state-reason:StateReason = {StateReason}
+  field public-get library-set architecture:String = ""
+  field public-get library-set root-device-type:String = ""
+  field public-get library-set root-device-name:String = ""
+  field public-get library-set block-device-mapping:{Array-of InstanceBlockDeviceMapping} = {{Array-of InstanceBlockDeviceMapping}}
+  field public-get library-set instance-life-cycle:String = ""
+  field public-get library-set spot-instance-request-id:String = ""
+  field public-get library-set virtualization-type:String = ""
+  field public-get library-set platform:String = ""
+  field public-get library-set subnet-id:String = ""
+  field public-get library-set vpc-id:String = ""
+  
+  {constructor public {default
+                          instance-id:String = "",
+                          image-id:String = "",
+                          instance-state:InstanceState = {InstanceState},
+                          private-dns-name:String = "",
+                          dns-name:String = "",
+                          reason:String = "",
+                          key-name:String = "",
+                          ami-launch-index:String = "",
+                          product-codes:{Array-of ProductCode} = {{Array-of ProductCode}},
+                          instance-type:String = "",
+                          launch-time:DateTime = {DateTime},
+                          placement:Placement = {Placement},
+                          kernel-id:String = "",
+                          ramdisk-id:String = "",
+                          monitoring:InstanceMonitoringState = {InstanceMonitoringState},
+                          private-ip-address:String = "",
+                          ip-address:String = "",
+                          state-reason:StateReason = {StateReason},
+                          architecture:String = "",
+                          root-device-type:String = "",
+                          root-device-name:String = "",
+                          block-device-mapping:{Array-of InstanceBlockDeviceMapping} = {{Array-of InstanceBlockDeviceMapping}},
+                          instance-life-cycle:String = "",
+                          spot-instance-request-id:String = "",
+                          virtualization-type:String = "",
+                          platform:String = "",
+                          subnet-id:String = "",
+                          vpc-id:String = ""
+                      }
+    set self.instance-id = instance-id
+    set self.image-id = image-id
+    set self.instance-state = instance-state
+    set self.private-dns-name = private-dns-name
+    set self.dns-name = dns-name
+    set self.reason = reason
+    set self.key-name = key-name
+    set self.ami-launch-index = ami-launch-index
+    set self.product-codes = product-codes
+    set self.instance-type = instance-type
+    set self.launch-time = launch-time
+    set self.placement = placement
+    set self.kernel-id = kernel-id
+    set self.ramdisk-id = ramdisk-id
+    set self.monitoring = monitoring
+    set self.private-ip-address = private-ip-address
+    set self.ip-address = ip-address
+    set self.state-reason = state-reason
+    set self.architecture = architecture
+    set self.root-device-type = root-device-type
+    set self.root-device-name = root-device-name
+    set self.block-device-mapping = block-device-mapping
+    set self.instance-life-cycle = instance-life-cycle
+    set self.spot-instance-request-id = spot-instance-request-id
+    set self.virtualization-type = virtualization-type
+    set self.platform = platform
+    set self.subnet-id = subnet-id
+    set self.vpc-id = vpc-id
+  }
+  
+  {getter public {block-device-mapping-tail}:InstanceBlockDeviceMapping
+    {return self.block-device-mapping[self.block-device-mapping.size - 1]}
+  }
+}

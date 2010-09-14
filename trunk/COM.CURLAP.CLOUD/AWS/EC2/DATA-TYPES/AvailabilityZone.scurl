@@ -1,0 +1,20 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| AvailabilityZoneItemType
+{define-class public AvailabilityZone
+  
+  field public-get library-set zone-name:String
+  field public-get library-set zone-state:String
+  field public-get library-set region-name:String
+  
+  {constructor public {default
+                          zone-name:String = "",
+                          zone-state:String = "",
+                          region-name:String = ""
+                      }
+    set self.zone-name = zone-name
+    set self.zone-state = zone-state
+    set self.region-name = region-name
+  }
+}

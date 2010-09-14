@@ -55,14 +55,14 @@
      case "code" do
         {switch {self.tag-stack.top-of-stack}
          case "currentState" do
-            set self.terminate-instances-response.instances-set[instances-tail].cuurent-state.code = {self.data.to-int}
+            set self.terminate-instances-response.instances-set[instances-tail].current-state.code = {self.data.to-int}
          case "previousState" do
             set self.terminate-instances-response.instances-set[instances-tail].previous-state.code = {self.data.to-int}
         }
      case "name" do
         {switch {self.tag-stack.top-of-stack}
          case "currentState" do
-            set self.terminate-instances-response.instances-set[instances-tail].cuurent-state.name = {self.data.to-String}
+            set self.terminate-instances-response.instances-set[instances-tail].current-state.name = {self.data.to-String}
          case "previousState" do
             set self.terminate-instances-response.instances-set[instances-tail].previous-state.name = {self.data.to-String}
         }

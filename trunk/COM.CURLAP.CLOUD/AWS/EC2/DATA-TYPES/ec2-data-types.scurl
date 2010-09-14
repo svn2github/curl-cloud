@@ -1,130 +1,179 @@
 
 {curl-file-attributes character-encoding = "utf8"}
 
-|| AvailabilityZoneItemType
-{define-class public AvailabilityZone
-  field public-get library-set zone-name:String = ""
-  field public-get library-set zone-state:String = ""
-  field public-get library-set region-name:String = ""
-}
-
-|| RunInstancesResponse
-{define-class public RunInstancesResponse
-  field public-get library-set request-id:String = ""
-  field public-get library-set reservation-id:String = ""
-  field public-get library-set owner-id:String = ""
-  field public-get library-set group-set:{Array-of Group} = {{Array-of Group}}
-  field public-get library-set instances-set:{Array-of RunningInstance} = {{Array-of RunningInstance}}
-  
-  {getter public {instances-tail}:RunningInstance
-    {return self.instances-set[self.instances-set.size - 1]}
-  }
-  
-  {getter public {group-tail}:Group
-    {return self.group-set[self.group-set.size - 1]}
-  }
-}
-
-{define-class public Group
-  field public-get library-set group-id:String = ""
-}
-
-{define-class public RunningInstance
-  field public-get library-set instance-id:String = ""
-  field public-get library-set image-id:String = ""
-  field public-get library-set instance-state:InstanceState = {InstanceState}
-  field public-get library-set private-dns-name:String = ""
-  field public-get library-set dns-name:String = ""
-  field public-get library-set reason:String = ""
-  field public-get library-set key-name:String = ""
-  field public-get library-set ami-launch-index:String = ""
-  field public-get library-set product-codes:{Array-of ProductCode} = {{Array-of ProductCode}}
-  field public-get library-set instance-type:String = ""
-  field public-get library-set launch-time:DateTime = {DateTime}
-  field public-get library-set placement:Placement = {Placement}
-  field public-get library-set kernel-id:String = ""
-  field public-get library-set ramdisk-id:String = ""
-  field public-get library-set monitoring:InstanceMonitoringState = {InstanceMonitoringState}
-  field public-get library-set private-ip-address:String = ""
-  field public-get library-set ip-address:String = ""
-  field public-get library-set state-reason:StateReason = {StateReason}
-  field public-get library-set architecture:String = ""
-  field public-get library-set root-device-type:String = ""
-  field public-get library-set root-device-name:String = ""
-  field public-get library-set block-device-mapping:{Array-of InstanceBlockDeviceMapping} = {{Array-of InstanceBlockDeviceMapping}}
-  field public-get library-set instance-life-cycle:String = ""
-  field public-get library-set spot-instance-request-id:String = ""
-  field public-get library-set virtualization-type:String = ""
-  field public-get library-set platform:String = ""
-  field public-get library-set subnet-id:String = ""
-  field public-get library-set vpc-id:String = ""
-  
-  {getter public {block-device-mapping-tail}:InstanceBlockDeviceMapping
-    {return self.block-device-mapping[self.block-device-mapping.size - 1]}
-  }
-}
-
+|| InstanceStateType
 {define-class public InstanceState
+  
   field public-get library-set code:int
-  field public-get library-set name:String = ""
+  field public-get library-set name:String
+  
+  {constructor public {default
+                          code:int = -1,
+                          name:String = ""
+                      }
+    set self.code = code
+    set self.name = name
+  }
 }
 
+|| ProductCodesSetItemType
 {define-class public ProductCode
-  field public-get library-set product-code:String = ""
+  
+  field public-get library-set product-code:String
+  
+  {constructor public {default
+                          code:String = ""
+                      }
+    set self.product-code = code
+  }
 }
 
+|| PlacementResponseType
 {define-class public Placement
-  field public-get library-set availability-zone:String = ""
+  
+  field public-get library-set availability-zone:String
+  
+  {constructor public {default
+                          zone:String = ""
+                      }
+    set self.availability-zone = zone
+  }
 }
 
+|| InstanceMonitoringStateType
 {define-class public InstanceMonitoringState
-  field public-get library-set state:String = ""
+  
+  field public-get library-set state:String
+  
+  {constructor public {default
+                          state:String = ""
+                      }
+    set self.state = state
+  }
 }
 
+|| StateReasonType
 {define-class public StateReason
-  field public-get library-set code:String = ""
-  field public-get library-set message:String = ""
+  
+  field public-get library-set code:String
+  field public-get library-set message:String
+  
+  {constructor public {default
+                          code:String = "",
+                          message:String = ""
+                      }
+    set self.code = code
+    set self.message = message
+  }
 }
 
+|| InstanceBlockDeviceMappingResponseItemType
 {define-class public InstanceBlockDeviceMapping
-  field public-get library-set device-name:String = ""
-  field public-get library-set ebs:EbsInstanceBlockDeviceMapping = {EbsInstanceBlockDeviceMapping}
+  
+  field public-get library-set device-name:String
+  field public-get library-set ebs:EbsInstanceBlockDeviceMapping
+  
+  {constructor public {default
+                          device-name:String = "",
+                          ebs:EbsInstanceBlockDeviceMapping = {EbsInstanceBlockDeviceMapping}
+                      }
+    set self.device-name = device-name
+    set self.ebs = ebs
+  }
 }
 
+|| EbsInstanceBlockDeviceMappingResponseType
 {define-class public EbsInstanceBlockDeviceMapping
+  
   field public-get library-set volume-id:String = ""
   field public-get library-set status:String = ""
   field public-get library-set attach-time:DateTime = {DateTime}
   field public-get library-set delete-on-termination:bool
+  
+  {constructor public {default
+                          volume-id:String = "",
+                          status:String = "",
+                          attach-time:DateTime = {DateTime},
+                          delete-on-termination:bool = false
+                      }
+    set self.volume-id = volume-id
+    set self.status = status
+    set self.attach-time = attach-time
+    set self.delete-on-termination = delete-on-termination
+  }
 }
 
 || TerminateInstancesResponse
 {define-class public TerminateInstancesResponse
-  field public-get library-set request-id:String = ""
-  field public-get library-set instances-set:{Array-of InstanceStateChange} = {{Array-of InstanceStateChange}}
+  
+  field public-get library-set request-id:String
+  field public-get library-set instances-set:{Array-of InstanceStateChange}
+  
+  {constructor public {default
+                          request-id:String = "",
+                          instances-set:{Array-of InstanceStateChange} = {{Array-of InstanceStateChange}}
+                      }
+    set self.request-id = request-id
+    set self.instances-set = instances-set
+  }
 }
 
+|| InstanceStateChangeType
 {define-class public InstanceStateChange
-  field public-get library-set instance-id:String = ""
-  field public-get library-set cuurent-state:InstanceState = {InstanceState}
-  field public-get library-set previous-state:InstanceState = {InstanceState}
+  
+  field public-get library-set instance-id:String
+  field public-get library-set current-state:InstanceState
+  field public-get library-set previous-state:InstanceState
+  
+  {constructor public {default
+                          instance-id:String = "",
+                          current-state:InstanceState = {InstanceState},
+                          previous-state:InstanceState = {InstanceState}
+                      }
+    set self.instance-id = instance-id
+    set self.current-state = current-state
+    set self.previous-state = previous-state
+  }
 }
 
-|| DescribeInstances
+|| DescribeInstancesResponseType
 {define-class public DescribeInstancesResponse
-  field public-get library-set request-id:String = ""
-  field public-get library-set reservation-set:{Array-of Reservation} = {{Array-of Reservation}}
+  
+  field public-get library-set request-id:String
+  field public-get library-set reservation-set:{Array-of Reservation}
+  
+  {constructor public {default
+                          request-id:String = "",
+                          reservation-set:{Array-of Reservation} = {{Array-of Reservation}}
+                      }
+    set self.request-id = request-id
+    set self.reservation-set = reservation-set
+  }
   
   {getter public {reservation-tail}:Reservation
     {return self.reservation-set[self.reservation-set.size - 1]}
   }
 }
 
+|| ReservationInfoType
 {define-class public Reservation
-  field public-get library-set reservation-id:String = ""
-  field public-get library-set owner-id:String = ""
-  field public-get library-set group-set:{Array-of Group} = {{Array-of Group}}
-  field public-get library-set instances-set:{Array-of RunningInstance} = {{Array-of RunningInstance}}
+  
+  field public-get library-set reservation-id:String
+  field public-get library-set owner-id:String
+  field public-get library-set group-set:{Array-of Group}
+  field public-get library-set instances-set:{Array-of RunningInstance}
+  
+  {constructor public {default
+                          reservation-id:String = "",
+                          owner-id:String = "",
+                          group-set:{Array-of Group} = {{Array-of Group}},
+                          instances-set:{Array-of RunningInstance} = {{Array-of RunningInstance}}
+                      }
+    set self.reservation-id = reservation-id
+    set self.owner-id = owner-id
+    set self.group-set = group-set
+    set self.instances-set = instances-set
+  }
   
   {getter public {group-tail}:Group
     {return self.group-set[self.group-set.size - 1]}

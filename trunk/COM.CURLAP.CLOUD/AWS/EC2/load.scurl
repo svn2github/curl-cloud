@@ -14,4 +14,3 @@
 {include "ec2-client.scurl"}
 {include "EC2HttpRequester.scurl"}
 {include "SignatureGenerator.scurl"}
-

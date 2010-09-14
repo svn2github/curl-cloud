@@ -1,0 +1,33 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| RunInstancesResponseType
+{define-class public RunInstancesResponse
+  field public-get library-set request-id:String
+  field public-get library-set reservation-id:String
+  field public-get library-set owner-id:String
+  field public-get library-set group-set:{Array-of Group}
+  field public-get library-set instances-set:{Array-of RunningInstance}
+  
+  {constructor public {default
+                          request-id:String = "",
+                          reservation-id:String = "",
+                          owner-id:String = "",
+                          group-set:{Array-of Group} = {{Array-of Group}},
+                          instances-set:{Array-of RunningInstance} = {{Array-of RunningInstance}}
+                      }
+    set self.request-id = request-id
+    set self.reservation-id = reservation-id
+    set self.owner-id = owner-id
+    set self.group-set = group-set
+    set self.instances-set = instances-set
+  }
+  
+  {getter public {instances-tail}:RunningInstance
+    {return self.instances-set[self.instances-set.size - 1]}
+  }
+  
+  {getter public {group-tail}:Group
+    {return self.group-set[self.group-set.size - 1]}
+  }
+}

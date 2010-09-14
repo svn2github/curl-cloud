@@ -1,7 +1,11 @@
 {curl 7.0 package}
-{curl-file-attributes character-encoding = "shift-jis"}
+{curl-file-attributes character-encoding = "utf8"}
 {package COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES,
     {compiler-directives careful? = true}
 }
 
+{include "AvailabilityZone.scurl"}
 {include "ec2-data-types.scurl"}
+{include "Group.scurl"}
+{include "RunInstancesResponse.scurl"}
+{include "RunningInstance.scurl"}
