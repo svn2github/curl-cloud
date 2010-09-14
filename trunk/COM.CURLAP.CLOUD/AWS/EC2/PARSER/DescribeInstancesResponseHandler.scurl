@@ -2,19 +2,16 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler to parse a DescribeInstances response
-{define-class package DescribeInstancesResponseHandler {inherits DefaultHandler}
-  field package-get private-set describe-instances-response:DescribeInstancesResponse
+{define-class library DescribeInstancesResponseHandler {inherits DefaultHandler}
+  field library-get private-set describe-instances-response:DescribeInstancesResponse
   field private data:StringBuf
   field private tag-stack:{Array-of String}
   
-  {constructor package {default}
+  {constructor library {default}
     set self.describe-instances-response = {DescribeInstancesResponse}
     set self.data = {StringBuf}
     set self.tag-stack = {{Array-of String}}
     {construct-super}
-  }
-  
-  {method public {start-document}:void
   }
   
   {method public {start-element
@@ -84,8 +81,5 @@
             set self.describe-instances-response.reservation-tail.group-tail.group-id = {self.data.to-String}
         }
     }
-  }
-  
-  {method public {end-document}:void
   }
 }

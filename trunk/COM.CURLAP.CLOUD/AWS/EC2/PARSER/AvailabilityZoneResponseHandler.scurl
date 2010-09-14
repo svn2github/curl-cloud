@@ -2,19 +2,16 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler for availability zone parsing
-{define-class package AvailabilityZoneHandler {inherits DefaultHandler}
-  field package-get private-set availability-zones:{Array-of AvailabilityZone}
+{define-class library AvailabilityZoneResponseHandler {inherits DefaultHandler}
+  field library-get private-set availability-zones:{Array-of AvailabilityZone}
   field private availability-zone:AvailabilityZone
   field private data:StringBuf
   
-  {constructor package {default}
+  {constructor library {default}
     set self.availability-zones = {{Array-of AvailabilityZone}}
     set self.availability-zone = {AvailabilityZone}
     set self.data = {StringBuf}
     {construct-super}
-  }
-  
-  {method public {start-document}:void
   }
   
   {method public {start-element 
@@ -63,8 +60,5 @@
      else
         || do nothing
     }
-  }
-  
-  {method public {end-document}:void
   }
 }

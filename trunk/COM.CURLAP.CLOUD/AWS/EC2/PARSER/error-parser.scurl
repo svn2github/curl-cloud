@@ -1,24 +1,17 @@
 
 {curl-file-attributes character-encoding = "utf8"}
 
-|| Error information
-{define-class public EC2Error
-  field public-get package-set code:String = ""
-  field public-get package-set message:String = ""
-}
+
 
 || Handler for EC2 error parsing
-{define-class package EC2ErrorHandler {inherits DefaultHandler}
-  field package-get private-set ec2-errors:{Array-of EC2Error}
+{define-class library EC2ErrorHandler {inherits DefaultHandler}
+  field library-get private-set ec2-errors:{Array-of EC2ExceptionContent}
   field private data:StringBuf
   
-  {constructor package {default}
-    set self.ec2-errors = {{Array-of EC2Error}}
+  {constructor library {default}
+    set self.ec2-errors = {{Array-of EC2ExceptionContent}}
     set self.data = {StringBuf}
     {construct-super}
-  }
-  
-  {method public {start-document}:void
   }
   
   {method public {start-element
@@ -33,7 +26,7 @@
      case "Errors" do
         || skip
      case "Error" do
-        {self.ec2-errors.append {EC2Error}}
+        {self.ec2-errors.append {EC2ExceptionContent}}
      else
         || do nothing
     }
@@ -64,9 +57,6 @@
         || do nothing
     }
   }
-  
-  {method public {end-document}:void
-  }
 }
 
 || EC2 exception class
@@ -77,4 +67,10 @@
     set self.code = code
     {construct-super message}
   }
+}
+
+|| Error information
+{define-class library EC2ExceptionContent
+  field public-get package-set code:String = ""
+  field public-get package-set message:String = ""
 }

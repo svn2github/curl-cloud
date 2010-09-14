@@ -2,19 +2,16 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler to parse a TerminateInstances response
-{define-class package TerminateInstancesResponseHandler {inherits DefaultHandler}
-  field package-get private-set terminate-instances-response:TerminateInstancesResponse
+{define-class library TerminateInstancesResponseHandler {inherits DefaultHandler}
+  field library-get private-set terminate-instances-response:TerminateInstancesResponse
   field private data:StringBuf
   field private tag-stack:{Array-of String}
   
-  {constructor package {default}
+  {constructor library {default}
     set self.terminate-instances-response = {TerminateInstancesResponse}
     set self.data = {StringBuf}
     set self.tag-stack = {{Array-of String}}
     {construct-super}
-  }
-  
-  {method public {start-document}:void
   }
   
   {method public {start-element
@@ -70,8 +67,5 @@
             set self.terminate-instances-response.instances-set[instances-tail].previous-state.name = {self.data.to-String}
         }
     }
-  }
-  
-  {method public {end-document}:void
   }
 }

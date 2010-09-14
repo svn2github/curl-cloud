@@ -2,19 +2,16 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler to parse a RunInstances response
-{define-class package RunInstancesResponseHandler {inherits DefaultHandler}
-  field package-get private-set run-instances-response:RunInstancesResponse
+{define-class library RunInstancesResponseHandler {inherits DefaultHandler}
+  field library-get private-set run-instances-response:RunInstancesResponse
   field private data:StringBuf
   field private tag-stack:{Array-of String}
   
-  {constructor package {default}
+  {constructor library {default}
     set self.run-instances-response = {RunInstancesResponse}
     set self.data = {StringBuf}
     set self.tag-stack = {{Array-of String}}
     {construct-super}
-  }
-  
-  {method public {start-document}:void
   }
   
   {method public {start-element
@@ -78,8 +75,5 @@
             set self.run-instances-response.group-tail.group-id = {self.data.to-String}
         }
     }
-  }
-  
-  {method public {end-document}:void
   }
 }

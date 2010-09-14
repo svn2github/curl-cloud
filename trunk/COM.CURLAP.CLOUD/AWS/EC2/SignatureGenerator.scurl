@@ -1,0 +1,50 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+ 
+{define-class package SignatureGenerator
+  
+  field package constant access-key:String
+  field package constant secret-key:String
+  
+  {constructor package {default
+                           access-key:String,
+                           secret-key:String}
+    set self.access-key = access-key
+    set self.secret-key = secret-key
+  }
+  
+  || Generate signature from given query parameters and secret key.
+  {method package {generate
+                      http-verb:HttpRequestMethod,
+                      host-header:String,
+                      request-uri:String,
+                      query-parameters:{Array-of String}
+                  }:String
+    
+    || Create string to sign
+    def str-to-sign = {StringBuf}
+    {str-to-sign.concat {http-verb.name.to-upper-clone}}
+    {str-to-sign.append '\n'}
+    {str-to-sign.concat {host-header.to-lower-clone}}
+    {str-to-sign.append '\n'}
+    {str-to-sign.concat request-uri}
+    {str-to-sign.append '\n'}
+    {query-parameters.sort}
+    {for param in query-parameters do
+        {str-to-sign.concat param}
+        {str-to-sign.append '&'}
+    }
+    || Remove '&' at the tail
+    {str-to-sign.remove str-to-sign.size - 1}
+    
+    || Create signature from string to sign
+    def signature = {base64-encode
+                        {{Array-of byte}.from-FastArray
+                            {hex-decode
+                                {hmac-sha-1 self.secret-key, {str-to-sign.to-String}}
+                            }
+                        }
+                    }
+    {return signature}
+  }
+}

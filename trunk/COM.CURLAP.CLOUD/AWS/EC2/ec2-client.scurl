@@ -2,16 +2,16 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Amazon EC2 Client class
-|| Provide EC2 APIs.
+|| Provides EC2 APIs.
 {define-class public EC2Client
   
-  field private access-key:String
-  field private secret-key:String
-  field private http-requester:HttpRequester = {HttpRequester}
+  field private http-requester:EC2HttpRequester
   
   {constructor public {default access-key:String, secret-key:String}
-    set self.access-key = access-key
-    set self.secret-key = secret-key
+    set self.http-requester = {EC2HttpRequester
+                                  access-key,
+                                  secret-key
+                              }
   }
   
   || Describe Availability Zones
@@ -29,17 +29,15 @@
     let response:#HttpTextInputStream
     {try
         set response = {self.http-requester.request
-                           request-parameters,
-                           self.access-key,
-                           self.secret-key
+                           request-parameters
                        }
-        let availability-zone-parser:SAXParser = {SAXParser}
-        let availability-zone-handler:AvailabilityZoneHandler = {AvailabilityZoneHandler}
-        {availability-zone-parser.set-content-handler availability-zone-handler}
-        {availability-zone-parser.set-error-handler availability-zone-handler}
+        let parser:SAXParser = {SAXParser}
+        let handler:AvailabilityZoneResponseHandler = {AvailabilityZoneResponseHandler}
+        {parser.set-content-handler handler}
+        {parser.set-error-handler handler}
         def input-stream = {InputSource character-stream = response}
-        {availability-zone-parser.parse input-stream}
-        {return availability-zone-handler.availability-zones}
+        {parser.parse input-stream}
+        {return handler.availability-zones}
      catch ec2-e:EC2Exception do
         {throw ec2-e}
      catch e:Exception do
@@ -74,9 +72,7 @@
     }
     {try
         def response = {self.http-requester.request
-                               request-parameters,
-                               self.access-key,
-                               self.secret-key
+                               request-parameters
                            }
         let run-instances-parser:SAXParser = {SAXParser}
         let run-instances-handler:RunInstancesResponseHandler = {RunInstancesResponseHandler}
@@ -100,9 +96,7 @@
                              }
     {try
         def response = {self.http-requester.request
-                               request-parameters,
-                               self.access-key,
-                               self.secret-key
+                               request-parameters
                        }
         let terminate-instances-parser:SAXParser = {SAXParser}
         let terminate-instances-handler:TerminateInstancesResponseHandler = {TerminateInstancesResponseHandler}
@@ -132,9 +126,7 @@
     }
     {try
         def response = {self.http-requester.request
-                               request-parameters,
-                               self.access-key,
-                               self.secret-key
+                               request-parameters
                        }
         let describe-instances-parser:SAXParser = {SAXParser}
         let describe-instances-handler:DescribeInstancesResponseHandler = {DescribeInstancesResponseHandler}

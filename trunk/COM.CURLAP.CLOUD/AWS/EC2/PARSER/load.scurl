@@ -1,0 +1,16 @@
+{curl 7.0 package}
+{curl-file-attributes character-encoding = "shift-jis"}
+{package COM.CURLAP.CLOUD.AWS.EC2.PARSER,
+    {compiler-directives careful? = true}
+}
+
+{import * from COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES}
+{import * from CURL.XML.SAX.BASE}
+{import * from CURL.XML.SAX.HELPERS}
+
+{include "AvailabilityZoneResponseHandler.scurl"}
+{include "DescribeInstancesResponseHandler.scurl"}
+{include "error-parser.scurl"}
+{include "instance-parser.scurl"}
+{include "RunInstancesResponseHandler.scurl"}
+{include "TerminateInstancesResponseHandler.scurl"}
