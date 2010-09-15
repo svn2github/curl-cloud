@@ -2,7 +2,7 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler to parse a RunInstances response
-{define-class library RunInstancesResponseHandler {inherits DefaultHandler}
+{define-class library RunInstancesResponseHandler {inherits EC2ResponseHandler}
   field library-get private-set run-instances-response:RunInstancesResponse
   field private data:StringBuf
   field private tag-stack:{Array-of String}

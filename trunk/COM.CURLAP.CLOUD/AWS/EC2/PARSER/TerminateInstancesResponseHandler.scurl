@@ -2,7 +2,7 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler to parse a TerminateInstances response
-{define-class library TerminateInstancesResponseHandler {inherits DefaultHandler}
+{define-class library TerminateInstancesResponseHandler {inherits EC2ResponseHandler}
   field library-get private-set terminate-instances-response:TerminateInstancesResponse
   field private data:StringBuf
   field private tag-stack:{Array-of String}

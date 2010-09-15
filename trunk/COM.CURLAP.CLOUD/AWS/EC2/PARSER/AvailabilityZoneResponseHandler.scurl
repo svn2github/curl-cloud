@@ -2,7 +2,7 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler for availability zone parsing
-{define-class library AvailabilityZoneResponseHandler {inherits DefaultHandler}
+{define-class library AvailabilityZoneResponseHandler {inherits EC2ResponseHandler}
   field library-get private-set availability-zones:{Array-of AvailabilityZone}
   field private availability-zone:AvailabilityZone
   field private data:StringBuf

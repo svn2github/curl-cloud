@@ -6,6 +6,7 @@
 
 {include "AvailabilityZone.scurl"}
 {include "ec2-data-types.scurl"}
+{include "EC2Exception.scurl"}
 {include "Group.scurl"}
 {include "RunInstancesResponse.scurl"}
 {include "RunningInstance.scurl"}

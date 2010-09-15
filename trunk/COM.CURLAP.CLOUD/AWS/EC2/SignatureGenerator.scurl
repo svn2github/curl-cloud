@@ -21,7 +21,7 @@
                       query-parameters:{Array-of String}
                   }:String
     
-    || Create string to sign
+    || create string to sign
     def str-to-sign = {StringBuf}
     {str-to-sign.concat {http-verb.name.to-upper-clone}}
     {str-to-sign.append '\n'}
@@ -34,10 +34,10 @@
         {str-to-sign.concat param}
         {str-to-sign.append '&'}
     }
-    || Remove '&' at the tail
+    || remove '&' at the tail
     {str-to-sign.remove str-to-sign.size - 1}
     
-    || Create signature from string to sign
+    || create signature from string to sign
     def signature = {base64-encode
                         {{Array-of byte}.from-FastArray
                             {hex-decode

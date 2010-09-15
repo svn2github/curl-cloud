@@ -1,0 +1,6 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+{define-class public abstract EC2ResponseHandler {inherits DefaultHandler}
+  
+}

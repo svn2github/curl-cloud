@@ -22,9 +22,9 @@
   field public-get library-set product-code:String
   
   {constructor public {default
-                          code:String = ""
+                          product-code:String = ""
                       }
-    set self.product-code = code
+    set self.product-code = product-code
   }
 }
 
@@ -34,9 +34,9 @@
   field public-get library-set availability-zone:String
   
   {constructor public {default
-                          zone:String = ""
+                          availability-zone:String = ""
                       }
-    set self.availability-zone = zone
+    set self.availability-zone = availability-zone
   }
 }
 

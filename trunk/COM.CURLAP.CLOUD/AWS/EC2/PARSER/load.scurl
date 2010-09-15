@@ -10,6 +10,7 @@
 
 {include "AvailabilityZoneResponseHandler.scurl"}
 {include "DescribeInstancesResponseHandler.scurl"}
+{include "EC2ResponseHandler.scurl"}
 {include "error-parser.scurl"}
 {include "instance-parser.scurl"}
 {include "RunInstancesResponseHandler.scurl"}

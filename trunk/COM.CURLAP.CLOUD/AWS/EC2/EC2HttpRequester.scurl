@@ -16,7 +16,6 @@
                                    }
   }
   
-  
   || Get XML file from EC2
   {method package {request request-parameters:{Array-of String}}:#HttpTextInputStream
     
@@ -51,12 +50,12 @@
             {return response}
          else
             || FIXME : Cannot receive XML when response header status is 401
-            let ec2-error-parser:SAXParser = {SAXParser}
-            let ec2-error-handler:EC2ErrorHandler = {EC2ErrorHandler}
-            {ec2-error-parser.set-content-handler ec2-error-handler}
-            {ec2-error-parser.set-error-handler ec2-error-handler}
-            {ec2-error-parser.parse {InputSource character-stream = response}}
-            def error = ec2-error-handler.ec2-errors[0]
+            let parser:SAXParser = {SAXParser}
+            let handler:EC2ErrorHandler = {EC2ErrorHandler}
+            {parser.set-content-handler handler}
+            {parser.set-error-handler handler}
+            {parser.parse {InputSource character-stream = response}}
+            def error = handler.ec2-errors[0]
             {throw {EC2Exception error.code, error.message}}
         }
     }

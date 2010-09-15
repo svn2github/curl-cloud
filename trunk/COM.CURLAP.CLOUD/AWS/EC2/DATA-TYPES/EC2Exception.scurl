@@ -1,0 +1,12 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+|| EC2 exception class
+{define-class public EC2Exception {inherits Exception}
+  field public-get private-set code:String
+  
+  {constructor public {default code:String, message:String}
+    set self.code = code
+    {construct-super message}
+  }
+}

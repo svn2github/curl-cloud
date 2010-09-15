@@ -2,12 +2,15 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Amazon EC2 Client class
-|| Provides EC2 APIs.
+|| Provide EC2 APIs.
 {define-class public EC2Client
   
   field private http-requester:EC2HttpRequester
   
-  {constructor public {default access-key:String, secret-key:String}
+  {constructor public {default
+                          access-key:String,
+                          secret-key:String
+                      }
     set self.http-requester = {EC2HttpRequester
                                   access-key,
                                   secret-key
@@ -18,31 +21,21 @@
   {method public {describe-availability-zones
                      zone-names:#{Array-of String} = null
                  }:{Array-of AvailabilityZone}
-    def request-parameters = {{Array-of String} "Action=DescribeAvailabilityZones"}
+    def params = {{Array-of String} "Action=DescribeAvailabilityZones"}
     let i:int = 1
     {if-non-null zone-names then
         {for zone-name in zone-names do
-            {request-parameters.append {format "ZoneName.%d=%s", i, zone-name}}
+            {params.append {format "ZoneName.%d=%s", i, zone-name}}
             set i = i + 1
         }
     }
-    let response:#HttpTextInputStream
-    {try
-        set response = {self.http-requester.request
-                           request-parameters
-                       }
-        let parser:SAXParser = {SAXParser}
-        let handler:AvailabilityZoneResponseHandler = {AvailabilityZoneResponseHandler}
-        {parser.set-content-handler handler}
-        {parser.set-error-handler handler}
-        def input-stream = {InputSource character-stream = response}
-        {parser.parse input-stream}
-        {return handler.availability-zones}
-     catch ec2-e:EC2Exception do
-        {throw ec2-e}
-     catch e:Exception do
-        {throw {EC2Exception "Exception", e.message}}
+    || request
+    def handler = {AvailabilityZoneResponseHandler}
+    {self.invoke
+        params,
+        handler
     }
+    {return handler.availability-zones}
   }
   
   || Run Instances
@@ -54,87 +47,81 @@
                      key-name:#String = null,
                      security-group:#{Array-of String} = null
                  }:RunInstancesResponse
-    def request-parameters ={{Array-of String}
-                                "Action=RunInstances",
-                                {format "ImageId=%s", image-id},
-                                {format "MinCount=%d", min-count},
-                                {format "MaxCount=%d", max-count}
-                            }
+    def params ={{Array-of String}
+                    "Action=RunInstances",
+                    {format "ImageId=%s", image-id},
+                    {format "MinCount=%d", min-count},
+                    {format "MaxCount=%d", max-count}
+                }
     {if-non-null key-name then
-        {request-parameters.append {format "KeyName=%s", key-name}}
+        {params.append {format "KeyName=%s", key-name}}
     }
     {if-non-null security-group then
         let i:int = 1
         {for name in security-group do
-            {request-parameters.append {format "SecurityGroup.%d=%s", i, name}}
+            {params.append {format "SecurityGroup.%d=%s", i, name}}
             set i = i + 1
         }
     }
-    {try
-        def response = {self.http-requester.request
-                               request-parameters
-                           }
-        let run-instances-parser:SAXParser = {SAXParser}
-        let run-instances-handler:RunInstancesResponseHandler = {RunInstancesResponseHandler}
-        {run-instances-parser.set-content-handler run-instances-handler}
-        {run-instances-parser.set-error-handler run-instances-handler}
-        def input-stream = {InputSource character-stream = response}
-        {run-instances-parser.parse input-stream}
-        {return run-instances-handler.run-instances-response}
-     catch ec2-e:EC2Exception do
-        {throw ec2-e}
-     catch e:Exception do
-        {throw {EC2Exception "Exception", e.message}}
+    || request
+    def handler = {RunInstancesResponseHandler}
+    {self.invoke
+        params,
+        handler
     }
+    {return handler.run-instances-response}
   }
   
   || Terminate Instances
   {method public {terminate-instances instance-id:String}:TerminateInstancesResponse
-    def request-parameters = {{Array-of String}
-                                 "Action=TerminateInstances",
-                                 {format "InstanceId=%s", instance-id}
-                             }
-    {try
-        def response = {self.http-requester.request
-                               request-parameters
-                       }
-        let terminate-instances-parser:SAXParser = {SAXParser}
-        let terminate-instances-handler:TerminateInstancesResponseHandler = {TerminateInstancesResponseHandler}
-        {terminate-instances-parser.set-content-handler terminate-instances-handler}
-        {terminate-instances-parser.set-error-handler terminate-instances-handler}
-        def input-stream = {InputSource character-stream = response}
-        {terminate-instances-parser.parse input-stream}
-        {return terminate-instances-handler.terminate-instances-response}
-     catch ec2-e:EC2Exception do
-        {throw ec2-e}
-     catch e:Exception do
-        {throw {EC2Exception "Exception", e.message}}
+    def params = {{Array-of String}
+                     "Action=TerminateInstances",
+                     {format "InstanceId=%s", instance-id}
+                 }
+    || request
+    def handler = {TerminateInstancesResponseHandler}
+    {self.invoke
+        params,
+        handler
     }
+    {return handler.terminate-instances-response}
   }
   
   || Describe Instances
   {method public {describe-instances
                      instance-ids:#{Array-of String} = null
                  }:DescribeInstancesResponse
-    def request-parameters = {{Array-of String} "Action=DescribeInstances"}
+    def params = {{Array-of String} "Action=DescribeInstances"}
     let i:int = 1
     {if-non-null instance-ids then
         {for instance-id in instance-ids do
-            {request-parameters.append {format "InstanceId.%d=%s", i, instance-id}}
+            {params.append {format "InstanceId.%d=%s", i, instance-id}}
             set i = i + 1
         }
     }
+    || request
+    def handler = {DescribeInstancesResponseHandler}
+    {self.invoke
+        params,
+        handler
+    }
+    {return handler.describe-instances-response}
+  }
+  
+  || Get and parse XML file.
+  {method private {invoke
+                      request-params:{Array-of String},
+                      response-handler:EC2ResponseHandler
+                  }:void
     {try
         def response = {self.http-requester.request
-                               request-parameters
+                           request-params
                        }
-        let describe-instances-parser:SAXParser = {SAXParser}
-        let describe-instances-handler:DescribeInstancesResponseHandler = {DescribeInstancesResponseHandler}
-        {describe-instances-parser.set-content-handler describe-instances-handler}
-        {describe-instances-parser.set-error-handler describe-instances-handler}
+        def parser:SAXParser = {SAXParser}
+        {parser.set-content-handler response-handler}
+        {parser.set-error-handler response-handler}
         def input-stream = {InputSource character-stream = response}
-        {describe-instances-parser.parse input-stream}
-        {return describe-instances-handler.describe-instances-response}
+        {parser.parse input-stream}
      catch ec2-e:EC2Exception do
         {throw ec2-e}
      catch e:Exception do

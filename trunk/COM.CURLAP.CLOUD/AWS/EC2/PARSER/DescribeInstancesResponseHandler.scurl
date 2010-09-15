@@ -2,7 +2,7 @@
 {curl-file-attributes character-encoding = "utf8"}
 
 || Handler to parse a DescribeInstances response
-{define-class library DescribeInstancesResponseHandler {inherits DefaultHandler}
+{define-class library DescribeInstancesResponseHandler {inherits EC2ResponseHandler}
   field library-get private-set describe-instances-response:DescribeInstancesResponse
   field private data:StringBuf
   field private tag-stack:{Array-of String}
