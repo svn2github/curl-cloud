@@ -1,6 +1,26 @@
 {curl 7.0 manifest}
 {curl-file-attributes character-encoding = "utf8"}
 {manifest COM.CURLAP.CLOUD}
+{delegate-to COM.CURL.EXT,
+    location = "../CURL-EXT/manifest.mcurl"
+}
+
+{component file start_ec2.dcurl,
+    location = "start_ec2.dcurl"
+}
+
+
+{component package COM.CURLAP.CLOUD.AWS.EC2.UI,
+    location = "AWS/EC2/ui/load.scurl"
+}
+
+{component package COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES,
+    location = "AWS/EC2/DATA-TYPES/load.scurl"
+}
+
+{component package COM.CURLAP.CLOUD.AWS.EC2.PARSER,
+    location = "AWS/EC2/PARSER/load.scurl"
+}
 
 {component package COM.CURLAP.CLOUD.AWS.EC2,
     location = "AWS/EC2/load.scurl"
