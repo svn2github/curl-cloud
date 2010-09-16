@@ -4,34 +4,34 @@
 || RunningInstancesItemType
 {define-class public RunningInstance
   
-  field public-get library-set instance-id:String = ""
-  field public-get library-set image-id:String = ""
-  field public-get library-set instance-state:InstanceState = {InstanceState}
-  field public-get library-set private-dns-name:String = ""
-  field public-get library-set dns-name:String = ""
-  field public-get library-set reason:String = ""
-  field public-get library-set key-name:String = ""
-  field public-get library-set ami-launch-index:String = ""
-  field public-get library-set product-codes:{Array-of ProductCode} = {{Array-of ProductCode}}
-  field public-get library-set instance-type:String = ""
-  field public-get library-set launch-time:DateTime = {DateTime}
-  field public-get library-set placement:Placement = {Placement}
-  field public-get library-set kernel-id:String = ""
-  field public-get library-set ramdisk-id:String = ""
-  field public-get library-set monitoring:InstanceMonitoringState = {InstanceMonitoringState}
-  field public-get library-set private-ip-address:String = ""
-  field public-get library-set ip-address:String = ""
-  field public-get library-set state-reason:StateReason = {StateReason}
-  field public-get library-set architecture:String = ""
-  field public-get library-set root-device-type:String = ""
-  field public-get library-set root-device-name:String = ""
-  field public-get library-set block-device-mapping:{Array-of InstanceBlockDeviceMapping} = {{Array-of InstanceBlockDeviceMapping}}
-  field public-get library-set instance-life-cycle:String = ""
-  field public-get library-set spot-instance-request-id:String = ""
-  field public-get library-set virtualization-type:String = ""
-  field public-get library-set platform:String = ""
-  field public-get library-set subnet-id:String = ""
-  field public-get library-set vpc-id:String = ""
+  field public-get library-set instance-id:String
+  field public-get library-set image-id:String
+  field public-get library-set instance-state:InstanceState
+  field public-get library-set private-dns-name:String
+  field public-get library-set dns-name:String
+  field public-get library-set reason:String
+  field public-get library-set key-name:String
+  field public-get library-set ami-launch-index:String
+  field public-get library-set product-codes:{Array-of ProductCode}
+  field public-get library-set instance-type:String
+  field public-get library-set launch-time:DateTime
+  field public-get library-set placement:Placement
+  field public-get library-set kernel-id:String
+  field public-get library-set ramdisk-id:String
+  field public-get library-set monitoring:InstanceMonitoringState
+  field public-get library-set private-ip-address:String
+  field public-get library-set ip-address:String
+  field public-get library-set state-reason:StateReason
+  field public-get library-set architecture:String
+  field public-get library-set root-device-type:String
+  field public-get library-set root-device-name:String
+  field public-get library-set block-device-mapping:{Array-of InstanceBlockDeviceMapping}
+  field public-get library-set instance-life-cycle:String
+  field public-get library-set spot-instance-request-id:String
+  field public-get library-set virtualization-type:String
+  field public-get library-set platform:String
+  field public-get library-set subnet-id:String
+  field public-get library-set vpc-id:String
   
   {constructor public {default
                           instance-id:String = "",

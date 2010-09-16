@@ -108,6 +108,43 @@
     {return handler.describe-instances-response}
   }
   
+  || Async Describe Instances
+  {method public {async-describe-instances
+                     instance-ids:#{Array-of String} = null,
+                     describe-proc:{proc-type {#DescribeInstancesResponse,
+                                               #Exception,
+                                               bool
+                                              }:void}
+                 }:void
+    def params = {{Array-of String} "Action=DescribeInstances"}
+    let i:int = 1
+    {if-non-null instance-ids then
+        {for instance-id in instance-ids do
+            {params.append {format "InstanceId.%d=%s", i, instance-id}}
+            set i = i + 1
+        }
+    }
+    || request
+    def handler = {DescribeInstancesResponseHandler}
+    def handler-proc =
+        {proc {handler:EC2ResponseHandler,
+               e:#Exception,
+               canceled?:bool
+              }:void
+            def describe-handler = handler asa DescribeInstancesResponseHandler
+            {describe-proc
+                describe-handler.describe-instances-response,
+                e,
+                canceled?
+            }
+        }
+    {self.invoke-async
+        params,
+        handler,
+        handler-proc
+    }
+  }
+  
   || Get and parse XML file.
   {method private {invoke
                       request-params:{Array-of String},
@@ -127,5 +164,52 @@
      catch e:Exception do
         {throw {EC2Exception "Exception", e.message}}
     }
+  }
+  
+  || Async get and parse XML file.
+  {method private {invoke-async
+                      request-params:{Array-of String},
+                      response-handler:EC2ResponseHandler,
+                      handler-proc:{proc-type {EC2ResponseHandler,
+                                               #Exception,
+                                               bool
+                                              }:void}
+                  }:void
+    def handle-request-proc =
+        {proc {stream:#HttpTextInputStream,
+               exception:#Exception,
+               canceled?:bool
+              }:void
+            {if-non-null e = exception then
+                {handler-proc response-handler, e, false}
+             elseif canceled? then
+                {handler-proc response-handler, null, true}
+             else
+                {try
+                    def parser:SAXParser = {SAXParser}
+                    {parser.set-content-handler response-handler}
+                    {parser.set-error-handler response-handler}
+                    def input-stream = {InputSource character-stream = stream}
+                    {parser.parse input-stream}
+                    {handler-proc
+                        response-handler,
+                        null,
+                        false
+                    }
+                 catch ec2-e:EC2Exception do
+                    {handler-proc response-handler, ec2-e, false}
+                 catch e:Exception do
+                    {handler-proc
+                        response-handler,
+                        {EC2Exception "Exception", e.message},
+                        false
+                    }
+                }
+            }
+        }
+    def afo = {self.http-requester.async-request
+                  request-params,
+                  handle-request-proc
+              }
   }
 }
