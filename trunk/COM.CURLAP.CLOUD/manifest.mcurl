@@ -1,9 +1,9 @@
 {curl 7.0 manifest}
 {curl-file-attributes character-encoding = "utf8"}
 {manifest COM.CURLAP.CLOUD}
-||--{delegate-to COM.CURL.EXT,
-||--    location = "../CURL-EXT/manifest.mcurl"
-||--}
+{delegate-to COM.CURL.EXT,
+    location = "../lib/CURL-EXT/manifest.mcurl"
+}
 
 {component file start_ec2.dcurl,
     location = "start_ec2.dcurl"
