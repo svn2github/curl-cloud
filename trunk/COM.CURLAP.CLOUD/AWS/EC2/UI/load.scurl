@@ -1,0 +1,26 @@
+{curl 7.0 package}
+{curl-file-attributes character-encoding = "utf8"}
+{package COM.CURLAP.CLOUD.AWS.EC2.UI,
+    {compiler-directives careful? = true, allow-slow-spliced-arguments? = true}
+}
+
+{import * from COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES}
+{import * from COM.CURLAP.CLOUD.AWS.S3}
+{import * from COM.CURLAP.CLOUD.AWS.S3.UI}
+{import * from CURL.DATA-ACCESS.BASE}
+{import * from CURL.GUI.STANDARD}
+{import * from CURL.ENGINE.APPLET}
+{import * from CURL.GRAPHICS.WINDOW}
+{import * from CURL.GUI.SHAPES}
+{import * from CURL.UTIL.MIME-ASSOC}
+{import * from COM.CURL.EXT.GUI}
+{import * from COM.CURLAP.CLOUD.AWS.EC2}
+
+{include "interface.scurl"}
+{include "login.scurl"}
+{include "cloud.scurl"}
+{include "bucket-shape.scurl"}
+{include "bucket-space.scurl"}
+{include "map.scurl"}
+{include "run-instance-dialog.scurl"}
+{include "server-shape.scurl"}

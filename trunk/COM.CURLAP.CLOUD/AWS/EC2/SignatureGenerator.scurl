@@ -45,6 +45,6 @@
                             }
                         }
                     }
-    {return signature}
+    {return {url-encode-string signature}}
   }
 }

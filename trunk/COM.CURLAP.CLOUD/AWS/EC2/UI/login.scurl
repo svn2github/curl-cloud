@@ -1,0 +1,206 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+
+{persistent-data
+    "Amazon EC2 S3 API Demo",
+    duration = 10minutes
+}
+
+{doc-next
+    {purpose Amazon EC2/S3ログインクラス}
+    {purpose EC2とS3、どちらのサービスを利用するか選択できます。}
+}
+{define-class public final LoginDialog {inherits View}
+  field private _AccessKey:String
+  field private _SecretKey:String
+  field private _s3client:#S3Client
+  field private _ec2client:#EC2Client
+  field private _service-list:DropdownList
+  
+  let private persistent-key:String = "Amazon EC2 S3"
+  let private pd-AccessKey:String = "AccessKey"
+  let private pd-SecretKey:String = "SecretKey"
+  
+  {constructor public {default ...}
+    {construct-super
+        resizable? = false,
+        width = 410px,
+        height = 145px,
+        background = "#E0DFE3",
+        {splice ...}}
+    
+    let pd:{HashTable-of String, String} = {{HashTable-of String, String}}
+    {try
+        {with-compiler-directives allow-implicit-any-casts? = true do
+            set pd = {get-persistent-data LoginDialog.persistent-key}
+            set self._AccessKey = {pd.get-if-exists LoginDialog.pd-AccessKey}
+            set self._SecretKey = {pd.get-if-exists LoginDialog.pd-SecretKey}
+            {output "AccessKey: [" & self._AccessKey & "]"}
+            {output "SecretKey: [" & self._SecretKey & "]"}
+        }
+     catch not-found:KeyNotFoundException do
+        set self._AccessKey = ""
+        set self._SecretKey = ""
+        {output "KeyNotFoundException"}
+     catch e:Exception do
+        set self._AccessKey = ""
+        set self._SecretKey = ""
+        {output "Exception !!!!!"}
+    }
+    
+    let icon:ImageGraphic = {ImageGraphic {url "./Image/S3Mark.png"}}
+    
+    let tf-Access:TextField =
+        {TextField
+            value = self._AccessKey,
+            max-chars = 50,
+            prompt = "アクセスキー"}
+    let pf-Secret:PasswordField =
+        {PasswordField
+            value = self._SecretKey,
+            max-chars = 50,
+            prompt = "シークレットキー"}
+    
+    let cb-OK:CommandButton =
+        {CommandButton
+            label = "OK",
+            width = 80px, height = 24px,
+            shadow-spec = {ShadowSpec},
+            {on Action at b:CommandButton do
+                
+                || サービスの判別
+                {if self._service-list.value == "S3" then
+                    || TODO: Amazon S3へのログインを行う。　失敗したら、ダイアログ表示
+                    || tf-Access.valueとpf-Secret.valueの値で、ログインを行う。　(S3Client)
+                    set self._s3client = {S3Client tf-Access.value, pf-Secret.value}
+                    
+                    {try
+                        {self._s3client.get-bucket-list}
+                        
+                        || Amazon S3へのログイン成功時
+                        || TODO: Amazon S3へのアクセス情報の引数を追加する
+                        {if-non-null self._s3client then
+                            let map:CloudDialog = {CloudDialog
+                                                        self, {non-null self._s3client}
+                                                    }
+                            {map.show-dialog}
+                            {self.hide}
+                            
+                            set self._AccessKey = tf-Access.value
+                            set self._SecretKey = pf-Secret.value
+                            {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
+                            {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
+                            {set-persistent-data LoginDialog.persistent-key, pd}
+                            {commit-persistent-data}
+                            {output "AccessKey: [" & self._AccessKey & "]"}
+                            {output "SecretKey: [" & self._SecretKey & "]"}
+                        }
+                     catch ex:S3Exception do
+                        {popup-message ex.message, title = ex.code}
+                    }
+                 else 
+                    || 取りあえず世界地図を表示する。
+                    || TODO: 今は、テスト用EC2Clientを使用しています。
+                    || 自分で作ったEC2Clientを組み込んでください。
+                    set self._ec2client = {EC2Client tf-Access.value, pf-Secret.value}
+                    
+                    {try
+                        def res = {self._ec2client.describe-instances}
+                       
+                        || TODO: Amazon EC2へのアクセス情報の引数を追加する
+                        {if-non-null self._ec2client then
+                            let map:MapDialog = {MapDialog
+                                                        self, {non-null self._ec2client}
+                                                }
+                            
+                            {map.show-dialog res}
+                            {self.hide}
+                            
+                            set self._AccessKey = tf-Access.value
+                            set self._SecretKey = pf-Secret.value
+                            {pd.set LoginDialog.pd-AccessKey, self._AccessKey}
+                            {pd.set LoginDialog.pd-SecretKey, self._SecretKey}
+                            {set-persistent-data LoginDialog.persistent-key, pd}
+                            {commit-persistent-data}
+                            {output "AccessKey: [" & self._AccessKey & "]"}
+                            {output "SecretKey: [" & self._SecretKey & "]"}
+                        }
+                     catch ex:EC2Exception do
+                        {popup-message ex.message, title = ex.code}
+                    }
+                }
+            }
+        }
+    
+    let cb-Cancel:CommandButton =
+        {CommandButton
+            label = "Cancel",
+            width = 80px, height = 24px,
+            shadow-spec = {ShadowSpec},
+            {on Action at b:CommandButton do
+                {self.close}
+            }}
+    
+    set self._service-list = {DropdownList
+                                 data-model = {DefaultListModel
+                                                  "EC2", "S3"
+                                              },
+                                 width = 2cm,
+                                 dropdown-height = 2cm,
+                                 dropdown-width = 2cm,
+                                 prompt = "EC2"
+                             }
+    
+    
+    let layout:VBox =
+        {VBox
+            margin = 10px,
+            {HBox
+                valign = "center",
+                spacing = 8px,
+                icon,
+                {text Specify new values for existing Amazon EC2/S3 account.}
+            },
+            {Table
+                columns = 2,
+                {row-prototype
+                    {cell-prototype {text AccessKey:}},
+                    {cell-prototype tf-Access}
+                },
+                {row-prototype
+                    {cell-prototype {text SecretKey:}},
+                    {cell-prototype pf-Secret}
+                }
+            },
+            {Fill                 height = 8px},
+            
+            {HBox
+                {text Service:},
+                self._service-list,
+                {Fill},
+                cb-OK,
+                {Fill width = 10px},
+                cb-Cancel
+            }
+        }
+    
+    {self.add layout}
+    set self.title = "Edit Amazon EC2/S3 Account"
+    
+    {self.set-icon
+        {Pixmap.from-url  {url "./Image/S3Icon.png"}},
+        {Pixmap.from-url  {url "./Image/S3IconSmall.png"}}}
+    
+    {self.add-event-handler
+        {on WindowClose do
+            {exit}
+        }
+    }
+    
+    set self.visibility = WindowVisibility.normal
+  }
+  
+  {method public {show-dialog}:void
+    {self.show center? = true}
+  }
+}

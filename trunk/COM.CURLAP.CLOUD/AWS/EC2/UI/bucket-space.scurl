@@ -1,0 +1,48 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+
+{define-class public final BucketSpace {inherits Frame}
+  
+  field private _cloud:CloudDialog
+  field private _bucket-shape:BucketShape
+  
+  {constructor {default cloud:CloudDialog, bucket-shape:BucketShape, s3:S3Client, ...}
+    {construct-super
+        background = {FillPattern.from-url {url "./Image/BucketSpace.png"}},
+        {splice ...}}
+    
+    set self._cloud = cloud
+    set self._bucket-shape = bucket-shape
+    
+    || TODO: bucket-shapeよりBucketを取り出し、BucketModelを生成する。
+    let bucket:Bucket = self._bucket-shape.bucket
+    let bucket-model:BucketModel = {BucketModel.default bucket}
+    let vb:VBox =
+        {VBox
+            horigin = "left",
+            vorigin = "top",
+            hstretch? = true,
+            margin = 12px,
+            {HBox
+                height = 78px,
+                {TextFlowBox
+||++                border-width = 1px,
+||++                border-color = {FillPattern.get-pink},
+                    horigin = "center",
+                    vorigin = "center",
+                    font-family = "ＭＳ Ｐゴシック",
+                    font-size = 24pt,
+                    self._bucket-shape.bucket-name,
+                    color = FillPattern.white
+                }
+            },
+            {BucketBrowser
+                height = 340px,
+                bucket-model = bucket-model
+            }
+        }
+    {self.add vb}
+  }
+  
+}
+ 

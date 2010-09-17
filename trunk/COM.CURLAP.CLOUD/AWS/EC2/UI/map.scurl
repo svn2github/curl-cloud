@@ -1,0 +1,754 @@
+{curl-file-attributes character-encoding = "utf8"}
+
+{doc-next
+    {purpose もくもく世界地図クラス}
+    {details もくもく世界地図に各リージョンに存在するサーバインスタンスを表示します。}
+}
+{define-class public final MapDialog {inherits View}
+  
+  field private _click-position-x:Distance = 0m
+  field private _click-position-y:Distance = 0m
+  field private _moving?:bool = false
+  field private _selected-child:#Graphic
+  field private _animate-timer:Timer
+  field private _animate-mode:int = -1
+  field private _animate-up:bool = true
+  
+  field private _canvas:Canvas
+  field private _servers:{Array-of #Coordinate} = {{Array-of #Coordinate}}
+  
+  field private _ec2client:EC2Client
+  field private _coordinate:{HashTable-of String, Coordinate} = {{HashTable-of String, Coordinate}}
+  field private _update-timer:Timer
+  
+  field private _context-normal:EventHandler
+  field private _context-none:EventHandler
+  field private _context-current:#EventHandler = null
+  
+  let private CloudImage01-path:Path = {Path}
+  let private CloudImage02-path:Path = {Path}
+  let private CloudImage03-path:Path = {Path}
+  let private CloudImage90-path:Path = {Path}
+  let private CloudImage-path:Path = {Path}
+  
+  {constructor {default login:LoginDialog, ec2client:EC2Client, ...}
+    {construct-super
+        decorations? = false,
+        width = 974px,
+        height = 552px,
+        background = {url "./Image/world_map.png"},
+        {splice ...}}
+    
+    set self.title = "Amazon EC2 "
+    set self._ec2client = ec2client
+    
+    {self.set-icon
+        {Pixmap.from-url  {url "./Image/S3Icon.png"}},
+        {Pixmap.from-url  {url "./Image/S3IconSmall.png"}}}
+    set self.visibility = WindowVisibility.normal
+    
+    || Closeイベント
+    {self.add-event-handler
+        {on WindowClose do
+            set self._animate-timer.repeat = 0
+            {self.hide}
+            {login.show-dialog}
+            {self.destroy}
+        }
+    }
+    
+    || Viewの移動処理
+    let pm:EventHandler =
+        {on e:PointerMotion at v:View do
+            {if-non-null self._selected-child then
+                || 雲の移動
+                let (x:Distance, y:Distance) = {v.get-window-position}
+                {v.set-window-position
+                    e.x + x - self._click-position-x,
+                    e.y + y - self._click-position-y}
+            }
+        }
+    
+    {self.add-event-handler
+        {on e:PointerPress at v:View do
+            {if e.button == 3 then
+                def child = {self._canvas.graphical-child-visible-at e.x, e.y}
+                {if-non-null child then
+                    {if child isa ServerShape then
+                        {self.remove-context-menu}
+                        set self._selected-child = child
+                    }
+                 else
+                    {self.set-context-normal}
+                }
+            }
+        }
+    }
+    
+    {self.add-event-handler
+        {on e:PointerRelease at v:View do
+            {if e.button == 1 then
+                {if self._moving? then
+                    {try
+                        {v.remove-event-handler pm}
+                        set self._moving? = false
+                        set self._selected-child = null
+                     catch e:Error do
+                        {dump e}
+                    }
+                }
+            }
+        }
+    }
+    
+    || Menu
+    set self._context-normal =
+        {context-popup
+            menu-pane = 
+                {MenuPane
+                    {MenuAction label = "インスタンスの起動",
+                        {on Action do
+                            def run-dialog = {RunInstanceceDialog
+                                                 self._ec2client,
+                                                 self
+                                             }
+                            {run-dialog.show-dialog}
+                        }
+                    },
+                    {MenuAction label = "Logout",
+                        {on Action do
+                            def ret = {popup-question "Logout しますか?"}
+                            {if ret == Dialog.yes then
+                                || TODO: ログアウト処理が必要であれば、ここに・・・。
+                                {self.initialize-dialog}
+                                set self._update-timer.repeat = 0
+                                {self.close}
+                            }
+                        }
+                    }
+                }
+        }
+    
+    set self._context-none =
+        {context-popup
+            menu-pane = 
+                {MenuPane
+                }
+        }
+    
+    {self.initialize}
+    {self.set-context-normal}
+    set self._canvas = {Canvas}
+    {self.add self._canvas}
+    || サーバの座標を格納
+    set self._coordinate = {self.generate-coordinate}
+    
+    || もくもくタイマー
+    set self._animate-mode = 0
+    set self._animate-up = true
+    set self._animate-timer =
+        {Timer
+            repeat = 0,
+            {on TimerEvent do
+                {if self._animate-up then
+                    {inc self._animate-mode}
+                 else
+                    {dec self._animate-mode}
+                }
+                {if self._animate-mode > 2 then
+                    set self._animate-up = not self._animate-up
+                    set self._animate-mode = 1
+                 elseif self._animate-mode < 0 then
+                    set self._animate-up = not self._animate-up
+                    set self._animate-mode = 1
+                }
+                
+                {switch self._animate-mode
+                 case 0 do
+                    set MapDialog.CloudImage-path = MapDialog.CloudImage01-path
+                 case 1 do
+                    set MapDialog.CloudImage-path = MapDialog.CloudImage02-path
+                 case 2 do
+                    set MapDialog.CloudImage-path = MapDialog.CloudImage03-path
+                }
+                {self.set-window-shape
+                    {Region.from-path MapDialog.CloudImage-path}
+                }
+            },
+            interval = 0.4s
+        }
+    
+    || シェイプの設定
+    set MapDialog.CloudImage-path = MapDialog.CloudImage01-path
+    {self.set-window-shape
+        {Region.from-path MapDialog.CloudImage-path}
+    }
+    
+    || 定期的にインスタンスを描画
+    set self._update-timer = 
+        {Timer
+            repeat = -1,
+            interval = 5s,
+            {on TimerEvent do
+                {try
+||++                {self.initialize-dialog}
+||++                {self.show-dialog {self._ec2client.describe-instances}}
+                    || 非同期で
+                    {self._ec2client.async-describe-instances
+                        {proc {response:#DescribeInstancesResponse,
+                               e:#Exception,
+                               canceled?:bool
+                              }:void
+                            {if-non-null response then
+                                {if e == null then
+                                    {self.initialize-dialog}
+                                    {self.show-dialog response}
+                                }
+                            }
+                        }
+                    }
+                 catch ex:EC2Exception do
+                    {popup-message ex.message, title = ex.code}
+                }
+            }
+        }
+  }
+  
+  {doc-next
+    {purpose もくもく世界地図の表示}
+  }
+  {method public {show-dialog
+                     response:DescribeInstancesResponse
+                 }:void
+    || ※テスト用の実装です。
+    || サーバ情報一覧からServerShapeインスタンスを生成して、Canvasに配置する
+    || インスタンスのリストを作成
+    def instance-list = {{Array-of RunningInstance}}
+    def reservations = response.reservation-set
+    {for reservation in reservations do
+        {for instance in reservation.instances-set do
+            {instance-list.append instance}
+        }
+    }
+    {for instance in instance-list do
+        || ServerShapeインスタンスの生成
+        def ss = {ServerShape
+                     self._ec2client,
+                     instance
+                 }
+        def coordinate = {self.generate-coordinate}
+        let xy:#Coordinate
+        || サーバインスタンスのリージョンのXY座標を取得する
+        {if {instance.placement.availability-zone.prefix? "eu-west-1"} then
+            set xy = {coordinate.get "eu-west-1"}
+         elseif {instance.placement.availability-zone.prefix? "ap-southeast-1"} then
+            set xy = {coordinate.get "ap-southeast-1"}
+         elseif {instance.placement.availability-zone.prefix? "us-west-1"} then
+            set xy = {coordinate.get "us-west-1"}
+         elseif {instance.placement.availability-zone.prefix? "us-east-1"} then
+            set xy = {coordinate.get "us-east-1"}
+        }
+||++    || 座標が重複していないかチェック
+||++    {for server in self._servers do
+||++        
+||++        || 重複していた場合、ちょっことずらす
+||++        set xy._x = xy._x + 20px
+||++        set xy._y = xy._y + 20px
+||++    }
+        set xy = {self.modify-coordinate
+                     xy,
+                     self._servers
+                 }
+        || CanvasにServerShapeを追加
+        {self._canvas.add ss, x = xy._x, y = xy._y}
+        {self._servers.append xy}
+    }
+    
+    {self.show center? = true}
+    set self._animate-timer.repeat = -1
+  }
+  
+  {method public {modify-coordinate
+                     xy:#Coordinate,
+                     servers:{Array-of #Coordinate}
+                 }:#Coordinate
+    {if {servers.find
+            xy,
+            equality-proc = {proc {c1:#Coordinate,
+                                   c2:#Coordinate}:bool
+                                {return c1._x == c2._x and c1._y == c2._y}
+                            }
+        } != -1 then
+        set xy._x = xy._x + 20px
+        set xy._y = xy._y + 20px
+        set xy = {self.modify-coordinate
+                     xy,
+                     servers
+                 }
+    }
+    {return xy}
+  }
+  
+  || 世界地図を初期化
+  {method public {initialize-dialog}:void
+    {for child in self._canvas.child-array do
+        {if child.graphic isa ServerShape then
+            def shape = child.graphic asa ServerShape
+            {if-non-null shape._balloon then
+                {if not shape._balloon.destroyed? then
+                    {shape._balloon.destroy}
+                }
+            }
+        }
+    }
+    {self._canvas.child-array.clear}
+    {self._canvas.clear}
+    {self._servers.clear}
+  }
+  
+  || 非同期通信の開始
+  {method package {start-async-communication}:void
+    set self._update-timer.repeat = -1
+  }
+  
+  || 非同期通信の停止
+  {method package {stop-async-communication}:void
+    set self._update-timer.repeat = 0
+  }
+  
+  {method package {set-context-normal}:void
+    {if-non-null self._context-current then
+        {if {self.event-handlers.find self._context-normal} != -1 then
+            {self.remove-event-handler {non-null self._context-current}}
+        }
+    }
+    {self.add-event-handler self._context-normal}
+    set self._context-current = self._context-normal
+  }
+  
+  {method package {remove-context-menu}:void
+    {if self._context-current != self._context-none then
+        {if-non-null self._context-current then
+            {self.remove-event-handler {non-null self._context-current}}
+        }
+        {self.add-event-handler self._context-none}
+        set self._context-current = self._context-none
+    }
+  }
+  
+  ||  ------------------------------------------------------------
+  ||  ------------------------------------------------------------
+  ||  ------------------------------------------------------------
+  
+  {method private {initialize}:void
+    
+    {if MapDialog.CloudImage01-path.empty? then
+        {MapDialog.CloudImage01-path.move-to
+            {Distance2d {any-to-Distance 77.483289px}, {any-to-Distance 315.88162px}}}
+        {MapDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 0.013019px}, {any-to-Distance 277.31281px}},
+            {Distance2d {any-to-Distance 34.396716px}, {any-to-Distance 189.08426px}},
+            {Distance2d {any-to-Distance 115.52659px}, {any-to-Distance 186.71721px}}}
+        {MapDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 108.63436px}, {any-to-Distance 64.78781px}},
+            {Distance2d {any-to-Distance 261.53713px}, {any-to-Distance 38.33168px}},
+            {Distance2d {any-to-Distance 335.13376px}, {any-to-Distance 75.33471px}}}
+        {MapDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 374.02843px}, {any-to-Distance 18.29685px}},
+            {Distance2d {any-to-Distance 467.72602px}, {any-to-Distance 18.64115px}},
+            {Distance2d {any-to-Distance 510.24534px}, {any-to-Distance 53.51753px}}}
+        {MapDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 543.2988px}, {any-to-Distance 10.92844px}},
+            {Distance2d {any-to-Distance 620.72596px}, {any-to-Distance 0.43645px}},
+            {Distance2d {any-to-Distance 668.85727px}, {any-to-Distance 41.45525px}}}
+        {MapDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 718.20303px}, {any-to-Distance 0.83737px}},
+            {Distance2d {any-to-Distance 820.73404px}, {any-to-Distance 3.71123px}},
+            {Distance2d {any-to-Distance 851.14555px}, {any-to-Distance 78.21081px}}}
+        {MapDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance 64.11366px}, {any-to-Distance 18.0678px}},
+            {Distance2d {any-to-Distance 96.03552px}, {any-to-Distance 63.57996px}},
+            {Distance2d {any-to-Distance 73.89974px}, {any-to-Distance 118.25046px}}}
+        {MapDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance 48.32224px}, {any-to-Distance 44.53593px}},
+            {Distance2d {any-to-Distance 45.78855px}, {any-to-Distance 150.4178px}},
+            {Distance2d {any-to-Distance -94.70543px}, {any-to-Distance 175.7182px}}}
+        {MapDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -7.54779px}, {any-to-Distance 81.1124px}},
+            {Distance2d {any-to-Distance -121.06953px}, {any-to-Distance 111.00271px}},
+            {Distance2d {any-to-Distance -187.33228px}, {any-to-Distance 78.65128px}}}
+        {MapDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -44.56191px}, {any-to-Distance 89.60008px}},
+            {Distance2d {any-to-Distance -190.59042px}, {any-to-Distance 101.21286px}},
+            {Distance2d {any-to-Distance -258.37488px}, {any-to-Distance 28.72849px}}}
+        {MapDialog.CloudImage01-path.curve-to-relative
+            {Distance2d {any-to-Distance -94.94159px}, {any-to-Distance 38.32263px}},
+            {Distance2d {any-to-Distance -182.30151px}, {any-to-Distance 7.22221px}},
+            {Distance2d {any-to-Distance -228.20564px}, {any-to-Distance -45.3622px}}}
+        {MapDialog.CloudImage01-path.curve-to
+            {Distance2d {any-to-Distance 83.264879px}, {any-to-Distance 437.12838px}},
+            {Distance2d {any-to-Distance 17.766269px}, {any-to-Distance 376.99585px}},
+            {Distance2d {any-to-Distance 77.483289px}, {any-to-Distance 315.88162px}}}
+    }
+    
+    {if MapDialog.CloudImage02-path.empty? then
+        {MapDialog.CloudImage02-path.move-to
+            {Distance2d {any-to-Distance 745.82589px}, {any-to-Distance 20.30018px}}}
+        {MapDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 716.89491px}, {any-to-Distance 20.79863px}},
+            {Distance2d {any-to-Distance 688.13399px}, {any-to-Distance 31.02561px}},
+            {Distance2d {any-to-Distance 669.18527px}, {any-to-Distance 48.61269px}}}
+        {MapDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 642.38934px}, {any-to-Distance 21.15475px}},
+            {Distance2d {any-to-Distance 590.00529px}, {any-to-Distance 11.99983px}},
+            {Distance2d {any-to-Distance 551.76339px}, {any-to-Distance 29.30019px}}}
+        {MapDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 534.92304px}, {any-to-Distance 36.31676px}},
+            {Distance2d {any-to-Distance 521.04948px}, {any-to-Distance 47.89778px}},
+            {Distance2d {any-to-Distance 511.68527px}, {any-to-Distance 61.17519px}}}
+        {MapDialog.CloudImage02-path.curve-to
+            {Distance2d {any-to-Distance 470.04936px}, {any-to-Distance 22.57502px}},
+            {Distance2d {any-to-Distance 383.6381px}, {any-to-Distance 26.38903px}},
+            {Distance2d {any-to-Distance 347.80526px}, {any-to-Distance 68.7646px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -3.78219px}, {any-to-Distance 4.24807px}},
+            {Distance2d {any-to-Distance -6.91283px}, {any-to-Distance 8.80784px}},
+            {Distance2d {any-to-Distance -10.11999px}, {any-to-Distance 13.33559px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -56.53982px}, {any-to-Distance -29.69429px}},
+            {Distance2d {any-to-Distance -139.91841px}, {any-to-Distance -20.52365px}},
+            {Distance2d {any-to-Distance -184.17188px}, {any-to-Distance 20.47499px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -25.82716px}, {any-to-Distance 24.41968px}},
+            {Distance2d {any-to-Distance -34.5863px}, {any-to-Distance 57.50677px}},
+            {Distance2d {any-to-Distance -31.40627px}, {any-to-Distance 88.91256px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -38.686041px}, {any-to-Distance -1.8737px}},
+            {Distance2d {any-to-Distance -74.528321px}, {any-to-Distance 22.60843px}},
+            {Distance2d {any-to-Distance -80.48438px}, {any-to-Distance 52.76247px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -6.511394px}, {any-to-Distance 26.66671px}},
+            {Distance2d {any-to-Distance 11.045719px}, {any-to-Distance 55.41417px}},
+            {Distance2d {any-to-Distance 40.828129px}, {any-to-Distance 68.2875px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 6.053282px}, {any-to-Distance 4.72694px}},
+            {Distance2d {any-to-Distance -3.74757px}, {any-to-Distance 9.11674px}},
+            {Distance2d {any-to-Distance -6.09375px}, {any-to-Distance 13.12501px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -18.42424px}, {any-to-Distance 21.2303px}},
+            {Distance2d {any-to-Distance -22.28941px}, {any-to-Distance 51.68835px}},
+            {Distance2d {any-to-Distance -1.96875px}, {any-to-Distance 73.01249px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 18.948291px}, {any-to-Distance 21.39307px}},
+            {Distance2d {any-to-Distance 52.958971px}, {any-to-Distance 32.92024px}},
+            {Distance2d {any-to-Distance 85.500021px}, {any-to-Distance 30.71253px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 35.16744px}, {any-to-Distance 43.34397px}},
+            {Distance2d {any-to-Distance 102.48683px}, {any-to-Distance 70.32627px}},
+            {Distance2d {any-to-Distance 167.29688px}, {any-to-Distance 60.75px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 20.79841px}, {any-to-Distance -2.79558px}},
+            {Distance2d {any-to-Distance 40.86909px}, {any-to-Distance -8.60192px}},
+            {Distance2d {any-to-Distance 59.67187px}, {any-to-Distance -16.6125px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 34.34745px}, {any-to-Distance 41.2806px}},
+            {Distance2d {any-to-Distance 104.88719px}, {any-to-Distance 59.0373px}},
+            {Distance2d {any-to-Distance 163.29791px}, {any-to-Distance 42.82248px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 42.11359px}, {any-to-Distance -11.04651px}},
+            {Distance2d {any-to-Distance 76.34103px}, {any-to-Distance -39.00259px}},
+            {Distance2d {any-to-Distance 90.29584px}, {any-to-Distance -72.55998px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 56.77631px}, {any-to-Distance 31.6404px}},
+            {Distance2d {any-to-Distance 146.0595px}, {any-to-Distance 11.48649px}},
+            {Distance2d {any-to-Distance 174.09375px}, {any-to-Distance -39.22503px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 6.54599px}, {any-to-Distance -11.29622px}},
+            {Distance2d {any-to-Distance 9.71958px}, {any-to-Distance -23.71754px}},
+            {Distance2d {any-to-Distance 10.5px}, {any-to-Distance -36.225px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 48.30948px}, {any-to-Distance -7.07397px}},
+            {Distance2d {any-to-Distance 96.37649px}, {any-to-Distance -30.3444px}},
+            {Distance2d {any-to-Distance 114.05435px}, {any-to-Distance -68.36216px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 16.31061px}, {any-to-Distance -33.71639px}},
+            {Distance2d {any-to-Distance 9.89491px}, {any-to-Distance -74.9853px}},
+            {Distance2d {any-to-Distance -20.3981px}, {any-to-Distance -102.37531px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance 15.18815px}, {any-to-Distance -31.37676px}},
+            {Distance2d {any-to-Distance 8.39645px}, {any-to-Distance -71.18179px}},
+            {Distance2d {any-to-Distance -24.46972px}, {any-to-Distance -93.83357px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -13.41348px}, {any-to-Distance -9.85424px}},
+            {Distance2d {any-to-Distance -30.03939px}, {any-to-Distance -17.13812px}},
+            {Distance2d {any-to-Distance -47.53028px}, {any-to-Distance -21.70398px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -10.39821px}, {any-to-Distance -31.6408px}},
+            {Distance2d {any-to-Distance -44.91426px}, {any-to-Distance -58.48764px}},
+            {Distance2d {any-to-Distance -86.39062px}, {any-to-Distance -61.27501px}}}
+        {MapDialog.CloudImage02-path.curve-to-relative
+            {Distance2d {any-to-Distance -4.80926px}, {any-to-Distance -0.39325px}},
+            {Distance2d {any-to-Distance -9.64584px}, {any-to-Distance -0.64563px}},
+            {Distance2d {any-to-Distance -14.48438px}, {any-to-Distance -0.4875px}}}
+    }
+    
+    {if MapDialog.CloudImage03-path.empty? then
+        {MapDialog.CloudImage03-path.move-to
+            {Distance2d {any-to-Distance 746.0334px}, {any-to-Distance 25.11366px}}}
+        {MapDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 716.20618px}, {any-to-Distance 25.5134px}},
+            {Distance2d {any-to-Distance 687.04176px}, {any-to-Distance 37.18567px}},
+            {Distance2d {any-to-Distance 668.92402px}, {any-to-Distance 56.20116px}}}
+        {MapDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 642.1035px}, {any-to-Distance 23.116px}},
+            {Distance2d {any-to-Distance 578.82699px}, {any-to-Distance 14.80422px}},
+            {Distance2d {any-to-Distance 541.04902px}, {any-to-Distance 40.63866px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -12.18775px}, {any-to-Distance 7.72348px}},
+            {Distance2d {any-to-Distance -21.35487px}, {any-to-Distance 17.9843px}},
+            {Distance2d {any-to-Distance -28.35937px}, {any-to-Distance 28.9875px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -36.3821px}, {any-to-Distance -41.02414px}},
+            {Distance2d {any-to-Distance -122.72985px}, {any-to-Distance -40.01025px}},
+            {Distance2d {any-to-Distance -158.85938px}, {any-to-Distance 0.5625px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -5.27499px}, {any-to-Distance 5.93585px}},
+            {Distance2d {any-to-Distance -9.56311px}, {any-to-Distance 12.38519px}},
+            {Distance2d {any-to-Distance -14.01562px}, {any-to-Distance 18.75px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -58.73048px}, {any-to-Distance -34.4026px}},
+            {Distance2d {any-to-Distance -153.03128px}, {any-to-Distance -21.97614px}},
+            {Distance2d {any-to-Distance -191.95313px}, {any-to-Distance 28.05005px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -18.14372px}, {any-to-Distance 23.6308px}},
+            {Distance2d {any-to-Distance -22.87342px}, {any-to-Distance 52.43405px}},
+            {Distance2d {any-to-Distance -19.21877px}, {any-to-Distance 79.725px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -43.437161px}, {any-to-Distance -5.69334px}},
+            {Distance2d {any-to-Distance -85.087212px}, {any-to-Distance 26.27878px}},
+            {Distance2d {any-to-Distance -82.359371px}, {any-to-Distance 60.78747px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 0.78007px}, {any-to-Distance 21.8787px}},
+            {Distance2d {any-to-Distance 18.06113px}, {any-to-Distance 42.01786px}},
+            {Distance2d {any-to-Distance 41.437498px}, {any-to-Distance 52.575px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 7.259499px}, {any-to-Distance 6.70975px}},
+            {Distance2d {any-to-Distance -2.257388px}, {any-to-Distance 14.24005px}},
+            {Distance2d {any-to-Distance -7.359378px}, {any-to-Distance 19.38751px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance -19.33079px}, {any-to-Distance 21.99562px}},
+            {Distance2d {any-to-Distance -18.67246px}, {any-to-Distance 56.5493px}},
+            {Distance2d {any-to-Distance 7.968753px}, {any-to-Distance 74.85px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 19.209838px}, {any-to-Distance 15.37011px}},
+            {Distance2d {any-to-Distance 47.665748px}, {any-to-Distance 22.53027px}},
+            {Distance2d {any-to-Distance 74.671898px}, {any-to-Distance 20.10001px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 36.32842px}, {any-to-Distance 47.81213px}},
+            {Distance2d {any-to-Distance 113.76175px}, {any-to-Distance 74.9022px}},
+            {Distance2d {any-to-Distance 181.53445px}, {any-to-Distance 57.67843px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 15.37221px}, {any-to-Distance -3.37728px}},
+            {Distance2d {any-to-Distance 30.2348px}, {any-to-Distance -8.63328px}},
+            {Distance2d {any-to-Distance 44.35617px}, {any-to-Distance -14.81592px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 36.8585px}, {any-to-Distance 49.30058px}},
+            {Distance2d {any-to-Distance 126.70965px}, {any-to-Distance 65.28945px}},
+            {Distance2d {any-to-Distance 186.79688px}, {any-to-Distance 34.3125px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 29.80669px}, {any-to-Distance -14.48586px}},
+            {Distance2d {any-to-Distance 52.30573px}, {any-to-Distance -38.54095px}},
+            {Distance2d {any-to-Distance 61.54687px}, {any-to-Distance -65.5125px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 52.94024px}, {any-to-Distance 34.58265px}},
+            {Distance2d {any-to-Distance 142.67654px}, {any-to-Distance 17.06559px}},
+            {Distance2d {any-to-Distance 171.1875px}, {any-to-Distance -32.32503px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 7.42815px}, {any-to-Distance -12.2379px}},
+            {Distance2d {any-to-Distance 10.45389px}, {any-to-Distance -25.95446px}},
+            {Distance2d {any-to-Distance 10.875px}, {any-to-Distance -39.4875px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 47.67804px}, {any-to-Distance -5.80735px}},
+            {Distance2d {any-to-Distance 95.85677px}, {any-to-Distance -28.05739px}},
+            {Distance2d {any-to-Distance 113.90625px}, {any-to-Distance -65.4px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 16.43997px}, {any-to-Distance -32.97052px}},
+            {Distance2d {any-to-Distance 9.53795px}, {any-to-Distance -73.9433px}},
+            {Distance2d {any-to-Distance -21.375px}, {any-to-Distance -100.27497px}}}
+        {MapDialog.CloudImage03-path.curve-to-relative
+            {Distance2d {any-to-Distance 17.65247px}, {any-to-Distance -32.43639px}},
+            {Distance2d {any-to-Distance 8.40939px}, {any-to-Distance -75.26398px}},
+            {Distance2d {any-to-Distance -28.92187px}, {any-to-Distance -96.18756px}}}
+        {MapDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 870.61038px}, {any-to-Distance 94.92004px}},
+            {Distance2d {any-to-Distance 856.52994px}, {any-to-Distance 89.46461px}},
+            {Distance2d {any-to-Distance 841.79902px}, {any-to-Distance 85.82616px}}}
+        {MapDialog.CloudImage03-path.curve-to
+            {Distance2d {any-to-Distance 832.0708px}, {any-to-Distance 51.14651px}},
+            {Distance2d {any-to-Distance 791.36227px}, {any-to-Distance 22.78247px}},
+            {Distance2d {any-to-Distance 746.0334px}, {any-to-Distance 25.11366px}}}
+    }
+    
+    {if MapDialog.CloudImage90-path.empty? then
+        {MapDialog.CloudImage90-path.move-to
+            {Distance2d {any-to-Distance 744.56529px}, {any-to-Distance 14.40643px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -23.66272px}, {any-to-Distance 0.70034px}},
+            {Distance2d {any-to-Distance -47.40607px}, {any-to-Distance 6.92487px}},
+            {Distance2d {any-to-Distance -67.40625px}, {any-to-Distance 19.78126px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -7.96729px}, {any-to-Distance -0.95198px}},
+            {Distance2d {any-to-Distance -16.86075px}, {any-to-Distance 1.20979px}},
+            {Distance2d {any-to-Distance -23.33791px}, {any-to-Distance -4.55702px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -35.72551px}, {any-to-Distance -20.4886px}},
+            {Distance2d {any-to-Distance -82.27739px}, {any-to-Distance -19.88845px}},
+            {Distance2d {any-to-Distance -117.88084px}, {any-to-Distance 0.49452px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -27.87457px}, {any-to-Distance -0.56415px}},
+            {Distance2d {any-to-Distance -55.83049px}, {any-to-Distance 0.25904px}},
+            {Distance2d {any-to-Distance -83.65625px}, {any-to-Distance -0.4375px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -16.41477px}, {any-to-Distance -2.45292px}},
+            {Distance2d {any-to-Distance -33.01197px}, {any-to-Distance -0.64561px}},
+            {Distance2d {any-to-Distance -49.31159px}, {any-to-Distance 1.24134px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -86.66117px}, {any-to-Distance 2.33107px}},
+            {Distance2d {any-to-Distance -173.56182px}, {any-to-Distance 5.73285px}},
+            {Distance2d {any-to-Distance -259.44686px}, {any-to-Distance 18.21607px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -20.63037px}, {any-to-Distance 3.75459px}},
+            {Distance2d {any-to-Distance -42.24694px}, {any-to-Distance 6.26075px}},
+            {Distance2d {any-to-Distance -61.116583px}, {any-to-Distance 15.94884px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -5.422057px}, {any-to-Distance 2.39438px}},
+            {Distance2d {any-to-Distance -7.292769px}, {any-to-Distance 8.25577px}},
+            {Distance2d {any-to-Distance -6.125px}, {any-to-Distance 13.8125px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 0px}, {any-to-Distance 38.57295px}},
+            {Distance2d {any-to-Distance 0px}, {any-to-Distance 77.14586px}},
+            {Distance2d {any-to-Distance 0px}, {any-to-Distance 115.71878px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -25.537982px}, {any-to-Distance 11.25918px}},
+            {Distance2d {any-to-Distance -45.827902px}, {any-to-Distance 37.79712px}},
+            {Distance2d {any-to-Distance -43.031261px}, {any-to-Distance 66.62497px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 2.129699px}, {any-to-Distance 24.69798px}},
+            {Distance2d {any-to-Distance 21.124157px}, {any-to-Distance 44.43297px}},
+            {Distance2d {any-to-Distance 42.593761px}, {any-to-Distance 54.90626px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -16.579477px}, {any-to-Distance 16.48512px}},
+            {Distance2d {any-to-Distance -28.250986px}, {any-to-Distance 41.53499px}},
+            {Distance2d {any-to-Distance -19.9375px}, {any-to-Distance 64.81249px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 3.778909px}, {any-to-Distance 11.34249px}},
+            {Distance2d {any-to-Distance 11.341703px}, {any-to-Distance 21.14932px}},
+            {Distance2d {any-to-Distance 20.375px}, {any-to-Distance 28.8125px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 0.231342px}, {any-to-Distance 19.32764px}},
+            {Distance2d {any-to-Distance -0.447878px}, {any-to-Distance 38.76968px}},
+            {Distance2d {any-to-Distance 0.3125px}, {any-to-Distance 58.03128px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 4.970283px}, {any-to-Distance 8.48253px}},
+            {Distance2d {any-to-Distance 15.983158px}, {any-to-Distance 10.21744px}},
+            {Distance2d {any-to-Distance 24.558513px}, {any-to-Distance 13.26312px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 48.83647px}, {any-to-Distance 12.37481px}},
+            {Distance2d {any-to-Distance 99.37237px}, {any-to-Distance 15.88177px}},
+            {Distance2d {any-to-Distance 149.43441px}, {any-to-Distance 20.03704px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 56.74838px}, {any-to-Distance 4.10604px}},
+            {Distance2d {any-to-Distance 113.62572px}, {any-to-Distance 6.20983px}},
+            {Distance2d {any-to-Distance 170.50711px}, {any-to-Distance 7.26234px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 51.05521px}, {any-to-Distance 26.37686px}},
+            {Distance2d {any-to-Distance 115.11999px}, {any-to-Distance 26.06356px}},
+            {Distance2d {any-to-Distance 166.09375px}, {any-to-Distance -0.4375px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 85.821px}, {any-to-Distance -2.4244px}},
+            {Distance2d {any-to-Distance 171.8814px}, {any-to-Distance -5.82652px}},
+            {Distance2d {any-to-Distance 256.92461px}, {any-to-Distance -18.28507px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 20.72289px}, {any-to-Distance -3.928px}},
+            {Distance2d {any-to-Distance 42.69169px}, {any-to-Distance -6.17893px}},
+            {Distance2d {any-to-Distance 61.41914px}, {any-to-Distance -16.43368px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 6.40618px}, {any-to-Distance -2.97183px}},
+            {Distance2d {any-to-Distance 5.56983px}, {any-to-Distance -10.40051px}},
+            {Distance2d {any-to-Distance 5.25px}, {any-to-Distance -16.25px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 0px}, {any-to-Distance -38.37503px}},
+            {Distance2d {any-to-Distance 0px}, {any-to-Distance -76.75003px}},
+            {Distance2d {any-to-Distance 0px}, {any-to-Distance -115.12503px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 27.17957px}, {any-to-Distance -18.82404px}},
+            {Distance2d {any-to-Distance 45.87242px}, {any-to-Distance -51.14497px}},
+            {Distance2d {any-to-Distance 43.45006px}, {any-to-Distance -84.78px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -1.25292px}, {any-to-Distance -22.78558px}},
+            {Distance2d {any-to-Distance -11.27953px}, {any-to-Distance -45.19446px}},
+            {Distance2d {any-to-Distance -27.98131px}, {any-to-Distance -60.84497px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance 10.50048px}, {any-to-Distance -24.57042px}},
+            {Distance2d {any-to-Distance 9.13684px}, {any-to-Distance -54.77967px}},
+            {Distance2d {any-to-Distance -7.28125px}, {any-to-Distance -76.4375px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -2.66238px}, {any-to-Distance -5.14049px}},
+            {Distance2d {any-to-Distance -9.83886px}, {any-to-Distance -8.1341px}},
+            {Distance2d {any-to-Distance -8.1875px}, {any-to-Distance -14.68753px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -0.37756px}, {any-to-Distance -11.4035px}},
+            {Distance2d {any-to-Distance 0.70191px}, {any-to-Distance -23.01659px}},
+            {Distance2d {any-to-Distance -0.4375px}, {any-to-Distance -34.3125px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -5.51656px}, {any-to-Distance -8.62218px}},
+            {Distance2d {any-to-Distance -17.09306px}, {any-to-Distance -10.3044px}},
+            {Distance2d {any-to-Distance -26.125px}, {any-to-Distance -13.40625px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -16.97341px}, {any-to-Distance -4.44982px}},
+            {Distance2d {any-to-Distance -34.28805px}, {any-to-Distance -7.41162px}},
+            {Distance2d {any-to-Distance -51.65625px}, {any-to-Distance -9.8125px}}}
+        {MapDialog.CloudImage90-path.curve-to-relative
+            {Distance2d {any-to-Distance -22.33292px}, {any-to-Distance -23.72464px}},
+            {Distance2d {any-to-Distance -55.92613px}, {any-to-Distance -34.02729px}},
+            {Distance2d {any-to-Distance -88px}, {any-to-Distance -33.15626px}}}
+    }
+    
+  }
+  
+  {doc-next
+    {purpose 世界地図の座標テーブル作成}
+    {details リージョンごとのもくもく世界地図の座標が格納してあります。}
+    {return-vals
+        HashTable-of String(リージョン), Coordinate:(XY座標)}
+  }
+  {method private {generate-coordinate}:{HashTable-of String, Coordinate}
+    let _map-coordinate:{HashTable-of String, Coordinate}
+    = {{HashTable-of String, Coordinate}}
+    
+    {_map-coordinate.set "eu-west-1", {Coordinate 190px, 120px}}
+    {_map-coordinate.set "ap-southeast-1", {Coordinate 350px, 250px}}
+    {_map-coordinate.set "us-west-1", {Coordinate 700px, 150px}}
+    {_map-coordinate.set "us-east-1", {Coordinate 800px, 150px}}
+    {return _map-coordinate}
+  }
+}
+
+{doc-next
+    {purpose 世界地図の座標格納クラス}
+    {details XY軸を格納します。}
+    {parameter _x, X座標}
+    {parameter _y, Y座標}
+}
+{define-class public Coordinate
+  field public-get package-set _x:PixelDistance
+  field public-get package-set _y:PixelDistance
+  
+  {constructor public {default
+                          x:PixelDistance,
+                          y:PixelDistance
+                      }
+    set self._x = x
+    set self._y = y
+  }
+}

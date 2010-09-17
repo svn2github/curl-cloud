@@ -1,0 +1,196 @@
+
+{curl-file-attributes character-encoding = "utf8"}
+
+{persistent-data
+    "Amazon EC2 S3 API Demo",
+    duration = 10minutes
+}
+
+{define-class public final RunInstanceceDialog {inherits View}
+  
+  field private _ec2client:EC2Client
+  field private _map:MapDialog
+||--  field private _ImageId:String
+||--  field private _KeyName:String
+||--  field private _SecurityGroup:{Array-of String}
+  
+  {constructor package {default
+                           ec2client:EC2Client,
+                           map:MapDialog
+                       }
+    {construct-super
+        resizable? = false,
+        width = 300px,
+        height = 150px,
+        background = "#E0DFE3"
+    }
+    
+    set self._ec2client = ec2client
+    set self._map = map
+    
+||++let pd:{HashTable-of String, String} = {{HashTable-of String, String}}
+||++{try
+||++    {with-compiler-directives allow-implicit-any-casts? = true do
+||++        set pd = {get-persistent-data LoginDialog.persistent-key}
+||++        set self._AccessKey = {pd.get-if-exists LoginDialog.pd-AccessKey}
+||++        set self._SecretKey = {pd.get-if-exists LoginDialog.pd-SecretKey}
+||++        {output "AccessKey: [" & self._AccessKey & "]"}
+||++        {output "SecretKey: [" & self._SecretKey & "]"}
+||++    }
+||++ catch not-found:KeyNotFoundException do
+||++    set self._AccessKey = ""
+||++    set self._SecretKey = ""
+||++    {output "KeyNotFoundException"}
+||++ catch e:Exception do
+||++    set self._AccessKey = ""
+||++    set self._SecretKey = ""
+||++    {output "Exception !!!!!"}
+||++}
+    
+    def tf-ImageId:TextField =
+        {TextField
+            value = "ami-b232d0db",
+            width = 4cm,
+            max-chars = 100
+        }
+    def tf-Min:TextField =
+        {TextField
+            value = "1",
+            width = 1cm,
+            max-chars = 10
+        }
+    def tf-Max:TextField =
+        {TextField
+            value = "1",
+            width = 1cm,
+            max-chars = 10
+        }
+    def tf-KeyName:TextField =
+        {TextField
+            width = 4cm,
+            max-chars = 100
+        }
+    def tf-SecurityGroup:TextField =
+        {TextField
+            width = 4cm,
+            max-chars = 100
+        }
+    
+    def cb-OK:CommandButton =
+        {CommandButton
+            label = "OK",
+            width = 80px, height = 24px,
+            shadow-spec = {ShadowSpec},
+            {on Action at b:CommandButton do
+                || execute RunInstances
+                def min = {tf-Min.value.to-int}
+                def max = {tf-Max.value.to-int}
+                {if min > 0 and max > 0 then
+                    {try
+                        {self._ec2client.run-instances
+                            tf-ImageId.value,
+                            min,
+                            max
+                        }
+                        {popup-message "インスタンスを起動しました．"}
+                        {self.close}
+                     catch e:EC2Exception do
+                        {popup-message e.message, title = e.code}
+                    }
+                 else
+                    let message:StringBuf = {StringBuf}
+                    {if min <= 0 then
+                        {message.concat "MinCountの値が不正です．\n"}
+                    }
+                    {if max <= 0 then
+                        {message.concat "MaxCountの値が不正です．\n"}
+                    }
+                    {popup-message message}
+                }
+            }
+        }
+            
+    def cb-Cancel:CommandButton =
+        {CommandButton
+            label = "Cancel",
+            width = 80px, height = 24px,
+            shadow-spec = {ShadowSpec},
+            {on Action at b:CommandButton do
+                {self.close}
+            }}
+  
+  def layout:VBox =
+      {VBox
+          margin = 10px,
+          
+||++      {HBox
+||++          {text ImageID:},
+||++          tf-ImageId
+||++      },
+||++      {HBox
+||++          {text MinCount:},
+||++          tf-Min,
+||++          {text MaxCount:},
+||++          tf-Max
+||++      },
+||++      {HBox
+||++          {text KeyName:},
+||++          tf-KeyName
+||++      },
+||++      {HBox
+||++          {text SecurityGroup:},
+||++          tf-SecurityGroup
+||++      },
+||++      {HBox
+||++          valign = "center",
+||++          spacing = 8px,
+||++          {text Please input }
+||++      },
+          {Table
+||++          columns = 2,
+              {row-prototype
+                  {cell-prototype {text ImageID:}},
+                  {cell-prototype tf-ImageId}
+              },
+              {row-prototype
+                  {cell-prototype {text MinCount:}},
+                  {cell-prototype tf-Min}
+              },
+              {row-prototype
+                  {cell-prototype {text MaxCount:}},
+                  {cell-prototype tf-Max}
+              }
+||++          {row-prototype
+||++              {cell-prototype {text KeyName:}},
+||++              {cell-prototype tf-KeyName}
+||++          },
+||++          {row-prototype
+||++              {cell-prototype {text SecurityGroup:}},
+||++              {cell-prototype tf-SecurityGroup}
+||++          }
+          },
+          {Fill                 height = 8px},
+          
+          {HBox
+            cb-OK,
+            {Fill width = 10px},
+            cb-Cancel
+        }
+      }
+  
+  {self.add layout}
+  set self.title = "Run new instance"
+  
+||--  {self.add-event-handler
+||--    {on WindowClose do
+||--        {self.close}
+||--    }
+||--  }
+  
+  set self.visibility = WindowVisibility.normal
+}
+  
+  {method public {show-dialog}:void
+    {self.show center? = true}
+  }  
+}
