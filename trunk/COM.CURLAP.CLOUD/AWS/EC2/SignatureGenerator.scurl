@@ -45,6 +45,12 @@
                             }
                         }
                     }
-    {return {url-encode-string signature}}
+    def non-encoded = {url-non-encoded-cc.clone-writable}
+    {non-encoded.remove '+'}
+    {return {url-encode-string
+                signature,
+                safe-CharClass = non-encoded
+            }
+    }
   }
 }

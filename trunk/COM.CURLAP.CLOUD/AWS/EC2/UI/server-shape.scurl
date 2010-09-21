@@ -37,12 +37,16 @@
     set self._instance = instance
     
     || サーバインスタンス起動中のイメージ
-    let is_on:ImageShape =
-        {ImageShape
-            {Pixmap.from-url
-                {url "./Image/server_on.png"}
-            }
-        }
+    def on_image = {image
+                       source = {url "./Image/server_on.gif"}
+                   }
+||++let is_on:ImageShape =
+||++    {ImageShape
+||++        {Pixmap.from-url
+||++            {url "./Image/server_on.gif"}
+||++        }
+||++    }
+    
     || サーバインスタンス停止中のイメージ
     let is_off:ImageShape =
         {ImageShape
@@ -66,7 +70,7 @@
     || 初期のサーバイメージの設定
     {switch instance.instance-state.code
      case 0, 16 do
-        {self.add is_on, replace? = true}
+        {self.add on_image, replace? = true}
      case 32, 48, 64, 80 do
         {self.add is_off, replace? = true}
     }

@@ -36,7 +36,7 @@
         decorations? = false,
         width = 974px,
         height = 552px,
-        background = {url "./Image/world_map.png"},
+        background = {url "./Image/world_map.jpg"},
         {splice ...}}
     
     set self.title = "Amazon EC2 "
@@ -280,7 +280,7 @@
                             }
         } != -1 then
         set xy._x = xy._x + 20px
-        set xy._y = xy._y + 20px
+        set xy._y = xy._y - 20px
         set xy = {self.modify-coordinate
                      xy,
                      servers
@@ -729,7 +729,7 @@
     {_map-coordinate.set "eu-west-1", {Coordinate 190px, 120px}}
     {_map-coordinate.set "ap-southeast-1", {Coordinate 350px, 250px}}
     {_map-coordinate.set "us-west-1", {Coordinate 700px, 150px}}
-    {_map-coordinate.set "us-east-1", {Coordinate 800px, 150px}}
+    {_map-coordinate.set "us-east-1", {Coordinate 300px, 150px}}
     {return _map-coordinate}
   }
 }
