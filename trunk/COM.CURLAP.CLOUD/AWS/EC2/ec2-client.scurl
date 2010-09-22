@@ -87,6 +87,51 @@
     {return handler.terminate-instances-response}
   }
   
+  {method public open {start-instances
+                          instance-id:String
+                      }:StartInstancesResponse
+    def params = {new {Array-of String},
+                     "Action=StartInstances",
+                     {format "InstanceId.1=%s",
+                         instance-id
+                     }
+                 }
+    def handler = {StartInstancesResponseHandler}
+    {self.invoke
+        params,
+        handler
+    }
+    {return handler.start-instances-response}
+  }
+  
+  {method public open {stop-instances
+                          force?:bool = false,
+                          ...:String
+                      }:StopInstancesResponse
+    def params = {new {Array-of String},
+                     "Action=StopInstances"
+                 }
+    {for id key i in ... do
+        {params.append
+            {format "InstanceId.%s=%s",
+                i + 1,
+                id
+            }
+        }
+    }
+    {if force? then
+        {params.append {format "Force=%s", force?}}
+    }
+    
+    || request
+    def handler = {StopInstancesResponseHandler}
+    {self.invoke
+        params,
+        handler
+    }
+    {return handler.stop-instances-response}
+  }
+  
   || Describe Instances
   {method public {describe-instances
                      instance-ids:#{Array-of String} = null

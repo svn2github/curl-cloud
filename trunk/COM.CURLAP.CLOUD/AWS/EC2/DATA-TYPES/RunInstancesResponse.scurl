@@ -31,3 +31,18 @@
     {return self.group-set[self.group-set.size - 1]}
   }
 }
+
+{define-class public open StartInstancesResponse
+  field public-get library-set request-id:String
+  field public-get library-set instances-set:{Array-of InstanceStateChange}
+  
+  {constructor public {default
+                          request-id:String = "",
+                          instances-set:{Array-of InstanceStateChange} =
+                              {new {Array-of InstanceStateChange}}
+                      }
+    set self.request-id = request-id
+    set self.instances-set = instances-set
+  }
+  
+}

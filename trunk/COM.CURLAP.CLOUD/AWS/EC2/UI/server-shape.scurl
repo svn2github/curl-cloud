@@ -4,7 +4,7 @@
     {purpose サーバインスタンスクラス}
     {details サーバインスタンスの起動/停止/プロパティ表示を行う。}
 }
-{define-class public final ServerShape {inherits Frame}
+{define-class public final ServerShape {inherits Frame, Observable}
   
   field private _click-position-x:Distance = 0m
   field private _click-position-y:Distance = 0m
@@ -30,48 +30,40 @@
                    instance:RunningInstance,
                    ...
                }
-    {construct-super
-        {splice ...}}
+    {construct-super.Frame
+        {splice ...}
+    }
+    {construct-super.Observable}
     
     set self._ec2client = ec2client
     set self._instance = instance
     
     || サーバインスタンス起動中のイメージ
-    def on_image = {image
-                       source = {url "./Image/server_on.gif"}
-                   }
-||++let is_on:ImageShape =
-||++    {ImageShape
-||++        {Pixmap.from-url
-||++            {url "./Image/server_on.gif"}
-||++        }
-||++    }
-    
+    def on-image = {url "Image/server_on.gif"}
     || サーバインスタンス停止中のイメージ
-    let is_off:ImageShape =
-        {ImageShape
-            {Pixmap.from-url
-                {url "./Image/server_off.png"}
-            }
-        }
-    || プロパティ
-    let properties:VBox = 
-        {VBox
-            horigin = "center",
-            vorigin = "center",
-            margin = 4px,
-            {self.create-item "InstanceID：",    instance.instance-id},
-            {self.create-item "ImageID：",       instance.image-id},
-            {self.create-item "InstanceState：", instance.instance-state.name},
-            {self.create-item "InstanceType：",  instance.instance-type},
-            {self.create-item "Architecture：",  instance.architecture}
-        }
+    def off-image = {url "Image/server_off.png"}
+    def is_off = {ImageShape
+                     {Pixmap.from-url off-image}
+                 }
+    || image for pending...
+    def pending-image = {url "Image/Server_yellow.png"} 
     
-    || 初期のサーバイメージの設定
     {switch instance.instance-state.code
-     case 0, 16 do
-        {self.add on_image, replace? = true}
-     case 32, 48, 64, 80 do
+     case 0 do
+        {self.add 
+            {ImageShape {Pixmap.from-url on-image}},
+            replace? = true
+        }
+     case 16 do
+        {self.add {image source = on-image}, replace? = true}
+     case 32, 64 do
+        {self.add
+            {ImageShape
+                {Pixmap.from-url pending-image}
+            },
+            replace? = true
+        }
+     case 48, 80 do
         {self.add is_off, replace? = true}
     }
     
@@ -93,48 +85,39 @@
 ||++                }
 ||++            }
 ||++        }
-            || 右クリックの場合、プロパティを表示する。
-            {if e.button == 3 then
-                || プロパティが表示されているかチェック 
-                {if self._balloon == null then
-                    || プロパティの表示
-                    set self._balloon = {self.create-balloon properties, e.x, e.y}
-                    {self._balloon.add-event-handler
-                        {context-popup
-                            menu-pane = {MenuPane}
-                        }
-                    }
-                 else
-                    || プロパティの破棄
-                    {if not self._balloon.destroyed? then
-                        {self._balloon.destroy}
-                    }
-                    || プロパティの表示
-                    set self._balloon = {self.create-balloon properties, e.x, e.y}
-                    {self._balloon.add-event-handler
-                        {context-popup
-                            menu-pane = {MenuPane}
-                        }
-                    }
-                }   
-            }
-            || 左クリックの場合、インスタンスが起動していたら停止する．
-            {if e.button == 1 then
-                {switch self._instance.instance-state.code
-                 case 0, 16 do
-                    def ret = {popup-question "インスタンスを停止しますか?"}
-                    {if ret == Dialog.yes then
-                        {try
-                            {self._ec2client.terminate-instances
-                                self._instance.instance-id
-                            }
-                            {popup-message "インスタンスを停止しました．"}
-                         catch e:EC2Exception do
-                            {popup-message e.message, title = e.code}
-                        }
-                    }
+            {switch e.button
+             case left-button do
+                || 左クリックの場合、プロパティを表示する。
+                {if self._balloon != null and not self._balloon.destroyed? then
+                    {self._balloon.destroy}
                 }
+                set self._balloon = {self.create-balloon
+                                        instance,
+                                        e.x,
+                                        e.y
+                                    }
             }
+            
+||--            || 左クリックの場合、インスタンスが起動していたら停止する．
+||--            {if e.button == 1 then
+||--                {switch self._instance.instance-state.code
+||--                 case 0, 16 do
+||--                    def ret = {popup-question "インスタンスを停止しますか?"}
+||--                    {if ret == Dialog.yes then
+||--                        {try
+||--||++                        {self._ec2client.terminate-instances
+||--||++                            self._instance.instance-id
+||--||++                        }
+||--                            {self._ec2client.stop-instances
+||--                                self._instance.instance-id
+||--                            }
+||--                            {popup-message "インスタンスを停止しました．"}
+||--                         catch e:EC2Exception do
+||--                            {popup-message e.message, title = e.code}
+||--                        }
+||--                    }
+||--                }
+||--            }
         }
     }
     
@@ -158,22 +141,168 @@
     {return-vals BalloonView, プロパティビュー}
   }
   {method private {create-balloon
-                      properties:VBox,
+                      instance:RunningInstance,
                       x:Distance,
-                      y:Distance}:BalloonView
+                      y:Distance
+                  }:BalloonView
+    || プロパティ
+    def panel = {HBox
+                    valign = "center",
+                    margin = 3pt
+                }
+    def properties = {Table
+                         width = {add-stretch},
+                         height = {add-stretch},
+                         background = "snow",
+                         cell-border-spec = {BorderSpec
+                                                bottom-border-width = 1pt
+                                            },
+                         cell-border-color = "silver",
+                         cell-border-style = BorderStyle.dash,
+                         font-family = "Century Gothic",
+                         font-size = 14pt,
+                         columns = 2,
+                         "Image ID", instance.image-id,
+                         "Type", instance.instance-type,
+                         "Architecture", instance.architecture,
+                         "IP", instance.ip-address,
+                         "DNS Name", instance.dns-name,
+                         "Launch Time", instance.launch-time
+                     }
+    def col0 = {properties.get-column 0}
+    set col0.color = "silver"
+    set col0.font-size = 12pt
+    
+    def btn = {proc {...}:CommandButton
+                  {return
+                      {CommandButton
+                          font-size = 14pt,
+                          font-family = "Century Gothic",
+                          color = "black",
+                          width = 150pt,
+                          label-inset = 5pt,
+                          {splice ...},
+                          {on Action do
+                              {if-non-null balloon = self._balloon then
+                                  {balloon.close-popup}
+                              }
+                          }
+                      }
+                  }
+              }
+    def shaded-spec = {proc {...}:ShadedSkinSpec
+                          {return
+                              {ShadedSkinSpec
+                                  "silver", "silver",
+||++                              highlight-alpha-1 = 1,
+                                  corner-radius = 5px,                                  
+                                  {splice ...}
+                              }
+                          }
+                      }
+    
+    {switch instance.instance-state.name
+     case "running", "stopped" do
+        def btn1 =
+            {if instance.instance-state.name == "running" then
+                {btn
+                    label = "stop",
+                    skin = {shaded-spec
+                               upper-right-rounded? = false,
+                               lower-right-rounded? = false
+                           },
+                    {on Action do
+                        {self._ec2client.stop-instances
+                            self._instance.instance-id
+                        }
+                    }
+                }
+             else
+                {btn
+                    label = "start",
+                    skin = {shaded-spec
+                               upper-right-rounded? = false,
+                               lower-right-rounded? = false
+                           },
+                    {on Action do
+                        {self._ec2client.start-instances
+                            self._instance.instance-id
+                        }
+                    }
+                }
+            }
+        def btn2 = {btn
+                       label = "terminate",
+                       skin = {shaded-spec
+                                  upper-left-rounded? = false,
+                                  lower-left-rounded? = false,
+                                  draw-left-edge? = false
+                              },
+                       {on Action do
+                           {self._ec2client.terminate-instances
+                               self._instance.instance-id
+                           }
+                       }
+                   }
+        {panel.add {Fill}}
+        {panel.add btn1}
+        {panel.add btn2}
+        {panel.add {Fill}}
+    }
+    
     {return
         {BalloonView
-            properties,
+            {VBox
+                width = {add-stretch},
+                height = {add-stretch},
+                properties,
+                panel
+            },
             self,
             x,
             y,
-            title = "プロパティ",
+            title = {format "%s - %s",
+                        instance.instance-id,
+                        instance.instance-state.name
+                    },
             tail-size = 25pt,
             max-width = 8in,
             corner-radius = 15pt,
             close-button? = true,
-            {on e:PointerMotion at bv:BalloonView do
-                {dump e.x, e.y}
+            style-sheet = {StyleSheet
+                              {StyleRule "BalloonView/titlebar",
+                                  background =
+                                      {switch instance.instance-state.name
+                                       case "running" do
+                                          "mediumseagreen"
+                                       case "stopped" do
+                                          "lightcoral"
+                                       case "terminated" do
+                                          "silver"
+                                       else
+                                          "olivedrab"
+                                      }
+                              },
+                              {StyleRule "BalloonView/title-frame",
+                                  color = "white",
+                                  font-size = 16pt,
+                                  font-family = "Century Gothic",
+                                  margin = 6pt,                                  
+                                  color = "white"
+                              }
+                          },
+            {on e:ViewVisibilityEvent do
+                {if e.visibility == WindowVisibility.normal then
+                    {self.notify-observers message = 1}
+                }
+            },
+            {on DestroyNotify do
+                {self.notify-observers message = -1}
+            },
+            {on ViewDeactivateEvent at balloon:BalloonView do
+                {if not balloon.destroyed? then
+                    {balloon.close-popup}
+                }
             }
         }
     }
@@ -187,7 +316,8 @@
   }
   {method private {create-item
                       item:String,
-                      value:String}:HBox
+                      value:String
+                  }:HBox
     {return
         {HBox
             horigin = "center",

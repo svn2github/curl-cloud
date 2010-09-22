@@ -4,7 +4,7 @@
     {purpose もくもく世界地図クラス}
     {details もくもく世界地図に各リージョンに存在するサーバインスタンスを表示します。}
 }
-{define-class public final MapDialog {inherits View}
+{define-class public final MapDialog {inherits View, Observer}
   
   field private _click-position-x:Distance = 0m
   field private _click-position-y:Distance = 0m
@@ -32,12 +32,13 @@
   let private CloudImage-path:Path = {Path}
   
   {constructor {default login:LoginDialog, ec2client:EC2Client, ...}
-    {construct-super
+    {construct-super.View
         decorations? = false,
         width = 974px,
         height = 552px,
         background = {url "./Image/world_map.jpg"},
         {splice ...}}
+    {construct-super.Observer}
     
     set self.title = "Amazon EC2 "
     set self._ec2client = ec2client
@@ -191,8 +192,6 @@
             interval = 5s,
             {on TimerEvent do
                 {try
-||++                {self.initialize-dialog}
-||++                {self.show-dialog {self._ec2client.describe-instances}}
                     || 非同期で
                     {self._ec2client.async-describe-instances
                         {proc {response:#DescribeInstancesResponse,
@@ -202,7 +201,7 @@
                             {if-non-null response then
                                 {if e == null then
                                     {self.initialize-dialog}
-                                    {self.show-dialog response}
+                                    {self.refresh-contents response}
                                 }
                             }
                         }
@@ -220,6 +219,12 @@
   {method public {show-dialog
                      response:DescribeInstancesResponse
                  }:void
+    {self.refresh-contents response}
+    {self.show center? = true}
+    set self._animate-timer.repeat = -1
+  }
+  
+  {method public {refresh-contents response:DescribeInstancesResponse}:void
     || ※テスト用の実装です。
     || サーバ情報一覧からServerShapeインスタンスを生成して、Canvasに配置する
     || インスタンスのリストを作成
@@ -227,7 +232,9 @@
     def reservations = response.reservation-set
     {for reservation in reservations do
         {for instance in reservation.instances-set do
-            {instance-list.append instance}
+            {if instance.instance-state.name != "terminated" then
+                {instance-list.append instance}
+            }
         }
     }
     {for instance in instance-list do
@@ -236,6 +243,7 @@
                      self._ec2client,
                      instance
                  }
+        {self.observe ss}
         def coordinate = {self.generate-coordinate}
         let xy:#Coordinate
         || サーバインスタンスのリージョンのXY座標を取得する
@@ -260,13 +268,24 @@
                      self._servers
                  }
         || CanvasにServerShapeを追加
-        {self._canvas.add ss, x = xy._x, y = xy._y}
+        {self._canvas.add ss, x = xy._x, y = xy._y, anchor = CanvasAnchor.top-left}
         {self._servers.append xy}
     }
-    
-    {self.show center? = true}
-    set self._animate-timer.repeat = -1
   }
+  
+  field private balloon-count:int = 0
+  {method protected {handle-observer-message 
+                        sender:Observable,
+                        message:any
+                    }:void
+    set self.balloon-count = self.balloon-count + (message asa int)
+    {if self.balloon-count == 0 then
+        set self._update-timer.repeat = -1
+     else
+        set self._update-timer.repeat = 0        
+    }
+ }
+  
   
   {method public {modify-coordinate
                      xy:#Coordinate,
@@ -729,7 +748,7 @@
     {_map-coordinate.set "eu-west-1", {Coordinate 190px, 120px}}
     {_map-coordinate.set "ap-southeast-1", {Coordinate 350px, 250px}}
     {_map-coordinate.set "us-west-1", {Coordinate 700px, 150px}}
-    {_map-coordinate.set "us-east-1", {Coordinate 300px, 150px}}
+    {_map-coordinate.set "us-east-1", {Coordinate 220px, 200px}}
     {return _map-coordinate}
   }
 }

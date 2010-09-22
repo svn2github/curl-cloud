@@ -15,6 +15,7 @@
 {import * from CURL.UTIL.MIME-ASSOC}
 {import * from COM.CURL.EXT.GUI}
 {import * from COM.CURLAP.CLOUD.AWS.EC2}
+{import * from CURL.UTIL.OBSERVER}
 
 {include "interface.scurl"}
 {include "login.scurl"}

@@ -92,7 +92,7 @@
                             min,
                             max
                         }
-                        {popup-message "インスタンスを起動しました．"}
+||++                    {popup-message "インスタンスを起動しました．"}
                         {self.close}
                      catch e:EC2Exception do
                         {popup-message e.message, title = e.code}
@@ -109,7 +109,7 @@
                 }
             }
         }
-            
+    
     def cb-Cancel:CommandButton =
         {CommandButton
             label = "Cancel",
@@ -118,11 +118,11 @@
             {on Action at b:CommandButton do
                 {self.close}
             }}
-  
-  def layout:VBox =
-      {VBox
-          margin = 10px,
-          
+    
+    def layout:VBox =
+        {VBox
+            margin = 10px,
+            
 ||++      {HBox
 ||++          {text ImageID:},
 ||++          tf-ImageId
@@ -146,20 +146,20 @@
 ||++          spacing = 8px,
 ||++          {text Please input }
 ||++      },
-          {Table
+            {Table
 ||++          columns = 2,
-              {row-prototype
-                  {cell-prototype {text ImageID:}},
-                  {cell-prototype tf-ImageId}
-              },
-              {row-prototype
-                  {cell-prototype {text MinCount:}},
-                  {cell-prototype tf-Min}
-              },
-              {row-prototype
-                  {cell-prototype {text MaxCount:}},
-                  {cell-prototype tf-Max}
-              }
+                {row-prototype
+                    {cell-prototype {text ImageID:}},
+                    {cell-prototype tf-ImageId}
+                },
+                {row-prototype
+                    {cell-prototype {text MinCount:}},
+                    {cell-prototype tf-Min}
+                },
+                {row-prototype
+                    {cell-prototype {text MaxCount:}},
+                    {cell-prototype tf-Max}
+                }
 ||++          {row-prototype
 ||++              {cell-prototype {text KeyName:}},
 ||++              {cell-prototype tf-KeyName}
@@ -168,27 +168,20 @@
 ||++              {cell-prototype {text SecurityGroup:}},
 ||++              {cell-prototype tf-SecurityGroup}
 ||++          }
-          },
-          {Fill                 height = 8px},
-          
-          {HBox
-            cb-OK,
-            {Fill width = 10px},
-            cb-Cancel
+            },
+            {Fill                 height = 8px},
+            
+            {HBox
+                cb-OK,
+                {Fill width = 10px},
+                cb-Cancel
+            }
         }
-      }
-  
-  {self.add layout}
-  set self.title = "Run new instance"
-  
-||--  {self.add-event-handler
-||--    {on WindowClose do
-||--        {self.close}
-||--    }
-||--  }
-  
-  set self.visibility = WindowVisibility.normal
-}
+    
+    {self.add layout}
+    set self.title = "Run new instance"  
+    set self.visibility = WindowVisibility.normal
+  }
   
   {method public {show-dialog}:void
     {self.show center? = true}

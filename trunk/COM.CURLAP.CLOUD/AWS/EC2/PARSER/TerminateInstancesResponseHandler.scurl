@@ -69,3 +69,140 @@
     }
   }
 }
+
+|| Handler to parse a TerminateInstances response
+{define-class library open StopInstancesResponseHandler {inherits EC2ResponseHandler}
+  field library-get private-set stop-instances-response:StopInstancesResponse
+  field private data:StringBuf
+  field private tag-stack:{Array-of String}
+  
+  {constructor library {default}
+    set self.stop-instances-response = {StopInstancesResponse}
+    set self.data = {StringBuf}
+    set self.tag-stack = {{Array-of String}}
+    {construct-super}
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "item" do
+        {self.stop-instances-response.instances-set.append {InstanceStateChange}}
+     else
+        || do nothing
+    }
+    {self.tag-stack.push name}
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {self.tag-stack.pop}
+    def instances-tail = self.stop-instances-response.instances-set.size - 1
+    {switch name
+     case "requestId" do
+        set self.stop-instances-response.request-id = {self.data.to-String}
+     case "instanceId" do
+        set self.stop-instances-response.instances-set[instances-tail].instance-id = {self.data.to-String}
+     case "code" do
+        {switch {self.tag-stack.top-of-stack}
+         case "currentState" do
+            set self.stop-instances-response.instances-set[instances-tail].current-state.code = {self.data.to-int}
+         case "previousState" do
+            set self.stop-instances-response.instances-set[instances-tail].previous-state.code = {self.data.to-int}
+        }
+     case "name" do
+        {switch {self.tag-stack.top-of-stack}
+         case "currentState" do
+            set self.stop-instances-response.instances-set[instances-tail].current-state.name = {self.data.to-String}
+         case "previousState" do
+            set self.stop-instances-response.instances-set[instances-tail].previous-state.name = {self.data.to-String}
+        }
+    }
+  }
+}
+
+{define-class library open StartInstancesResponseHandler {inherits EC2ResponseHandler}
+  field library-get private-set start-instances-response:StartInstancesResponse
+  field private data:StringBuf
+  field private tag-stack:{Array-of String}
+  
+  {constructor library {default}
+    set self.start-instances-response = {StartInstancesResponse}
+    set self.data = {StringBuf}
+    set self.tag-stack = {{Array-of String}}
+    {construct-super}
+  }
+  
+  {method public {start-element
+                     uri:String,
+                     name:String,
+                     qname:String,
+                     atts:Attributes
+                 }:void
+    {self.data.clear}
+    
+    {switch name
+     case "item" do
+        {self.start-instances-response.instances-set.append {InstanceStateChange}}
+     else
+        || do nothing
+    }
+    {self.tag-stack.push name}
+  }
+  
+  {method public {characters
+                     ch:StringBuf,
+                     start:int,
+                     length:int
+                 }:void
+    {self.data.clear}
+    {self.data.concat {ch.substr start, length}}
+  }
+  
+  {method public {end-element
+                     uri:String,
+                     name:String,
+                     qname:String
+                 }:void
+    {self.tag-stack.pop}
+    def instances-tail = self.start-instances-response.instances-set.size - 1
+    {switch name
+     case "requestId" do
+        set self.start-instances-response.request-id = {self.data.to-String}
+     case "instanceId" do
+        set self.start-instances-response.instances-set[instances-tail].instance-id = {self.data.to-String}
+     case "code" do
+        {switch {self.tag-stack.top-of-stack}
+         case "currentState" do
+            set self.start-instances-response.instances-set[instances-tail].current-state.code = {self.data.to-int}
+         case "previousState" do
+            set self.start-instances-response.instances-set[instances-tail].previous-state.code = {self.data.to-int}
+        }
+     case "name" do
+        {switch {self.tag-stack.top-of-stack}
+         case "currentState" do
+            set self.start-instances-response.instances-set[instances-tail].current-state.name = {self.data.to-String}
+         case "previousState" do
+            set self.start-instances-response.instances-set[instances-tail].previous-state.name = {self.data.to-String}
+        }
+    }
+  }
+}
