@@ -3,7 +3,7 @@
 {manifest COM.CURLAP.CLOUD}
 
 {component package COM.CURLAP.CLOUD.UTIL,
-    location = "util/load.scurl"
+    location = "UTIL/load.scurl"
 }
 
 {component package COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES,
