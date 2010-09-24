@@ -4,18 +4,17 @@
     {compiler-directives careful? = true, allow-slow-spliced-arguments? = true}
 }
 
-{import * from COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES}
-{import * from COM.CURLAP.CLOUD.AWS.S3}
-{import * from COM.CURLAP.CLOUD.AWS.S3.UI}
-{import * from CURL.DATA-ACCESS.BASE}
-{import * from CURL.GUI.STANDARD}
 {import * from CURL.ENGINE.APPLET}
 {import * from CURL.GRAPHICS.WINDOW}
 {import * from CURL.GUI.SHAPES}
+{import * from CURL.GUI.STANDARD}
 {import * from CURL.UTIL.MIME-ASSOC}
+{import * from CURL.UTIL.OBSERVER}
+
 {import * from COM.CURL.EXT.GUI}
 {import * from COM.CURLAP.CLOUD.AWS.EC2}
-{import * from CURL.UTIL.OBSERVER}
+{import * from COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES}
+{import * from COM.CURLAP.CLOUD.AWS.S3}
 
 {include "interface.scurl"}
 {include "login.scurl"}
