@@ -6,7 +6,7 @@
 
 {import * from COM.CURLAP.CLOUD.AWS.EC2.PARSER}
 {import * from COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES}
-{import * from COM.CURLAP.CLOUD.AWS.S3.UTIL}
+{import * from COM.CURLAP.CLOUD.UTIL}
 {import * from CURL.IO.HTTP}
 {import * from CURL.UTIL.BASE64}
 {import * from CURL.XML.SAX.PARSER}

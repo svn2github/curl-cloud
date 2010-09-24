@@ -1,6 +1,6 @@
 {curl 7.0 package}
 {curl-file-attributes character-encoding = "utf8"}
-{package COM.CURLAP.CLOUD.AWS.S3.UTIL}
+{package COM.CURLAP.CLOUD.UTIL}
 
 {import * from CURL.GUI.BASE}
 {import * from CURL.IO.HTTP}

@@ -2,8 +2,9 @@
 {curl-file-attributes character-encoding = "utf8"}
 {manifest COM.CURLAP.CLOUD}
 
-
-
+{component package COM.CURLAP.CLOUD.UTIL,
+    location = "util/load.scurl"
+}
 
 {component package COM.CURLAP.CLOUD.AWS.EC2.DATA-TYPES,
     location = "AWS/EC2/DATA-TYPES/load.scurl"
@@ -21,8 +22,4 @@
 
 {component package COM.CURLAP.CLOUD.AWS.S3,
     location = "AWS/S3/load.scurl"
-}
-
-{component package COM.CURLAP.CLOUD.AWS.S3.UTIL,
-    location = "AWS/S3/util/load.scurl"
 }
