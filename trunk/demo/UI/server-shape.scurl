@@ -269,28 +269,31 @@
             max-width = 8in,
             corner-radius = 15pt,
             close-button? = true,
-            style-sheet = {StyleSheet
-                              {StyleRule "BalloonView/titlebar",
-                                  background =
-                                      {switch instance.instance-state.name
-                                       case "running" do
-                                          "mediumseagreen"
-                                       case "stopped" do
-                                          "lightcoral"
-                                       case "terminated" do
-                                          "silver"
-                                       else
-                                          "olivedrab"
-                                      }
-                              },
-                              {StyleRule "BalloonView/title-frame",
-                                  color = "white",
-                                  font-size = 16pt,
-                                  font-family = "Century Gothic",
-                                  margin = 6pt,                                  
-                                  color = "white"
-                              }
-                          },
+            || FIXME:
+            || Because of the problem on the BalloonView's stylesheet handling,
+            || this causes the error. So I commented it out for now. 
+||++        style-sheet = {StyleSheet
+||++                          {StyleRule "BalloonView/titlebar",
+||++                              background =
+||++                                  {switch instance.instance-state.name
+||++                                   case "running" do
+||++                                      "mediumseagreen"
+||++                                   case "stopped" do
+||++                                      "lightcoral"
+||++                                   case "terminated" do
+||++                                      "silver"
+||++                                   else
+||++                                      "olivedrab"
+||++                                  }
+||++                          },
+||++                          {StyleRule "BalloonView/title-frame",
+||++                              color = "white",
+||++                              font-size = 16pt,
+||++                              font-family = "Century Gothic",
+||++                              margin = 6pt,                                  
+||++                              color = "white"
+||++                          }
+||++                      },
             {on e:ViewVisibilityEvent do
                 {if e.visibility == WindowVisibility.normal then
                     {self.notify-observers message = 1}
