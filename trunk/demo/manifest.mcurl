@@ -1,0 +1,19 @@
+{curl 7.0 manifest}
+{curl-file-attributes character-encoding = "shift-jis"}
+{manifest COM.CURLAP.CLOUD.AWS.DEMO}
+{delegate-to COM.CURL.EXT,
+    location = "../lib/CURL-EXT/manifest.mcurl"
+}
+
+{delegate-to COM.CURLAP.CLOUD,
+    location = "../code/manifest.mcurl"
+}
+
+
+{component package COM.CURLAP.CLOUD.AWS.DEMO.UI,
+    location = "UI/load.scurl"
+}
+{component file start.dcurl,
+    location = "start.dcurl"
+}
+

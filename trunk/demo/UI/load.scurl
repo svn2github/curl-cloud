@@ -1,6 +1,6 @@
 {curl 7.0 package}
 {curl-file-attributes character-encoding = "utf8"}
-{package COM.CURLAP.CLOUD.AWS.EC2.UI,
+{package COM.CURLAP.CLOUD.AWS.DEMO.UI,
     {compiler-directives careful? = true, allow-slow-spliced-arguments? = true}
 }
 
